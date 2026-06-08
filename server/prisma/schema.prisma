@@ -7,52 +7,51 @@ datasource db {
 }
 
 model Employee {
-  id              Int            @id @default(autoincrement())
-  empId           String         @unique
-  barcodeId       String?        @unique
-  name            String
-  position        String?
-  department      String?
-  email           String?
-  contact         String?
-  joiningDate     String?
-  salary          String?        @default("Not Disclosed")
-  project         String?
-  projectStatus   String?
-  teamLead        String?
-  dailyWorkStatus String?
-  photo           String?
-  password        String         @default("hps@1234")
-  createdAt       DateTime       @default(now())
-  attendance      Attendance[]
-  leaveRequest    LeaveRequest[]
-  isAttendanceLeader Boolean @default(false)
-  projects Project[]
-  tasks    Task[]
+  id                 Int            @id @default(autoincrement())
+  empId              String         @unique
+  barcodeId          String?        @unique
+  name               String
+  position           String?
+  department         String?
+  email              String?
+  contact            String?
+  joiningDate        String?
+  salary             String?        @default("Not Disclosed")
+  project            String?
+  projectStatus      String?
+  teamLead           String?
+  dailyWorkStatus    String?
+  photo              String?
+  password           String         @default("hps@1234")
+  createdAt          DateTime       @default(now())
+  isAttendanceLeader Boolean        @default(false)
+  attendance         Attendance[]
+  leaveRequest       LeaveRequest[]
+  projects           Project[]
+  tasks              Task[]
 }
 
 model Attendance {
-  id         Int      @id @default(autoincrement())
-  empId      String
-  status     String
-  timestamp  DateTime @default(now())
-  employee   Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  id        Int      @id @default(autoincrement())
+  empId     String
+  status    String
+  timestamp DateTime @default(now())
+  employee  Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
 }
 
 model LeaveRequest {
-  id        Int      @id @default(autoincrement())
-  empId     String
-  date      DateTime
-  fromDate  DateTime?
-  toDate    DateTime?
-  isHalfDay Boolean  @default(false)
+  id             Int       @id @default(autoincrement())
+  empId          String
+  date           DateTime
+  fromDate       DateTime?
+  toDate         DateTime?
+  isHalfDay      Boolean   @default(false)
   halfDaySession String?
-  reason    String
-  status    String   @default("Pending")
-  type      String   @default("Leave")   // "Leave" or "WFH"
-  createdAt DateTime @default(now())
-  employee  Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
-
+  reason         String
+  status         String    @default("Pending")
+  type           String    @default("Leave")
+  createdAt      DateTime  @default(now())
+  employee       Employee  @relation(fields: [empId], references: [empId], onDelete: Cascade)
 }
 
 model Announcement {
@@ -67,30 +66,27 @@ model Announcement {
 }
 
 model OfficeSetting {
-  id             Int      @id @default(autoincrement())
-  checkInTime    String   @default("09:00")   // "HH:MM" 24hr
-  checkOutTime   String   @default("18:00")
-  lateAfter      String   @default("09:15")   // marked Late if scan after this
-  halfDayBefore  String   @default("13:00")   // if scan before checkOut but after this = half day
-  workingDays    String   @default("Mon,Tue,Wed,Thu,Fri,Sat")  // comma-separated
-  officeName     String   @default("HPS Pvt Ltd")
-  officeAddress  String   @default("")
-  officePhone    String   @default("")
-  officeEmail    String   @default("")
-  updatedAt      DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  checkInTime   String   @default("09:00")
+  checkOutTime  String   @default("18:00")
+  lateAfter     String   @default("09:15")
+  halfDayBefore String   @default("13:00")
+  workingDays   String   @default("Mon,Tue,Wed,Thu,Fri,Sat")
+  officeName    String   @default("HPS Pvt Ltd")
+  officeAddress String   @default("")
+  officePhone   String   @default("")
+  officeEmail   String   @default("")
+  updatedAt     DateTime @updatedAt
 }
 
 model ActivityLog {
-  id            Int      @id @default(autoincrement())
-
-  empId         String?
-  employeeName  String?
-
-  action        String
-  category      String
-  details       String?
-
-  createdAt     DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  empId        String?
+  employeeName String?
+  action       String
+  category     String
+  details      String?
+  createdAt    DateTime @default(now())
 
   @@index([empId])
   @@index([category])
@@ -114,9 +110,9 @@ model Project {
   assignedBy String
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
-  tasks      Task[]
-  documents  ProjectDocument[]
   employee   Employee          @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  documents  ProjectDocument[]
+  tasks      Task[]
 }
 
 model Task {
@@ -131,11 +127,10 @@ model Task {
   dueDate     DateTime?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
-  documents   TaskDocument[]
-  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   employee    Employee       @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  documents   TaskDocument[]
 }
-
 
 model ProjectDocument {
   id           Int      @id @default(autoincrement())
