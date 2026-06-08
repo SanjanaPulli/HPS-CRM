@@ -1,0 +1,654 @@
+import { useState, useEffect, useRef } from 'react'
+import axios from 'axios'
+import JsBarcode from 'jsbarcode'
+import BASE_URL from '../config'
+import { useTheme } from '../context/ThemeContext'
+
+const EMPTY_FORM = {
+  empId: '', name: '', position: '', joiningDate: '', endDate: '', email: '',
+  contact: '', salary: 'Not Disclosed', teamLead: '', department: '', photo: ''
+}
+
+const DEPARTMENTS = ['Engineering', 'HR', 'Sales', 'Marketing', 'Finance', 'IT', 'Operations', 'Other']
+
+const TL_POSITIONS = [
+  'tech lead', 'innovation manager', 'computer research analyst',
+  'product designer', 'ui/ux designer',
+]
+const isTL = (position) => TL_POSITIONS.includes((position || '').toLowerCase().trim())
+
+const STATUS_COLORS = {
+  'Not Started': { bg: 'rgba(100,116,139,0.1)', text: '#64748b', dot: '#94a3b8' },
+  'Started':     { bg: 'rgba(59,130,246,0.1)',  text: '#3b82f6', dot: '#3b82f6' },
+  'In Progress': { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#f59e0b' },
+  'In Review':   { bg: 'rgba(168,85,247,0.1)',  text: '#9333ea', dot: '#a855f7' },
+  'Completed':   { bg: 'rgba(16,185,129,0.1)',  text: '#059669', dot: '#10b981' },
+  'Blocked':     { bg: 'rgba(239,68,68,0.1)',   text: '#dc2626', dot: '#ef4444' },
+}
+
+function StatusPill({ status }) {
+  if (!status) return null
+  const c = STATUS_COLORS[status] || STATUS_COLORS['Not Started']
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '2px 8px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
+      background: c.bg, color: c.text,
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: c.dot }} />
+      {status}
+    </span>
+  )
+}
+
+function ChevronDown({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
+}
+
+// Inject spinner keyframe once
+if (!document.head.querySelector('[data-emp-spin]')) {
+  const s = document.createElement('style')
+  s.setAttribute('data-emp-spin', '1')
+  s.textContent = '@keyframes emp-spin { to { transform: rotate(360deg); } }'
+  document.head.appendChild(s)
+}
+
+function Employees() {
+  const [employees, setEmployees]       = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [showForm, setShowForm]         = useState(false)
+  const [editEmployee, setEditEmployee] = useState(null)
+  const [form, setForm]                 = useState(EMPTY_FORM)
+  const [customDept, setCustomDept]     = useState('')
+  const [error, setError]               = useState(null)
+  const [resettingId, setResettingId]   = useState(null)
+  const [resetSuccess, setResetSuccess] = useState('')
+  const [search, setSearch]             = useState('')
+  const [deptFilter, setDeptFilter]     = useState('All')
+  const [sortBy, setSortBy]             = useState('name')
+  const [expandedId, setExpandedId]     = useState(null)
+  const [isMobile, setIsMobile]         = useState(window.innerWidth < 768)
+  const barcodeRefs = useRef({})
+  const formRef     = useRef(null)
+  const { theme }   = useTheme()
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+
+  useEffect(() => { fetchEmployees() }, [])
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees`)
+      setEmployees(res.data)
+    } catch {
+      setError('Failed to fetch employees')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!expandedId) return
+    const emp = employees.find(e => e.empId === expandedId)
+    if (emp?.barcodeId && barcodeRefs.current[emp.empId]) {
+      JsBarcode(barcodeRefs.current[emp.empId], emp.barcodeId, {
+        format: 'CODE128', width: 1.5, height: 35,
+        displayValue: true, fontSize: 10,
+        background: theme === 'dark' ? '#1C2333' : '#F8FAFC',
+        lineColor: theme === 'dark' ? '#E2E8F0' : '#0F172A',
+      })
+    }
+  }, [expandedId, employees, theme])
+
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      setTimeout(() => formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    }
+  }, [showForm])
+
+  const teamLeads = employees.filter(e => isTL(e.position))
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setError(null)
+    const finalDept = form.department === 'Other' ? (customDept.trim() || '') : form.department
+    if (form.department === 'Other' && !customDept.trim()) { setError('Please specify the department name'); return }
+    const payload = { ...form, department: finalDept }
+    try {
+      if (editEmployee) {
+        await axios.put(`${BASE_URL}/api/employees/${editEmployee.empId}`, payload)
+      } else {
+        await axios.post(`${BASE_URL}/api/employees`, payload)
+      }
+      setShowForm(false); setEditEmployee(null); setForm(EMPTY_FORM); setCustomDept('')
+      fetchEmployees()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save employee')
+    }
+  }
+
+  const handleEdit = (emp) => {
+    setEditEmployee(emp)
+    const isKnownDept = DEPARTMENTS.slice(0, -1).includes(emp.department)
+    setForm({
+      empId: emp.empId, name: emp.name || '', position: emp.position || '',
+      joiningDate: emp.joiningDate ? emp.joiningDate.split('T')[0] : '',
+      endDate: emp.endDate ? emp.endDate.split('T')[0] : '',
+      email: emp.email || '', salary: emp.salary || 'Not Disclosed',
+      teamLead: emp.teamLead || '', contact: emp.contact || '',
+      department: isKnownDept ? (emp.department || '') : (emp.department ? 'Other' : ''),
+      photo: emp.photo || ''
+    })
+    setCustomDept(isKnownDept ? '' : (emp.department || ''))
+    setShowForm(true)
+  }
+
+  const handleDelete = async (empId) => {
+    if (!window.confirm('Are you sure you want to delete this employee?')) return
+    try { await axios.delete(`${BASE_URL}/api/employees/${empId}`); fetchEmployees() }
+    catch { setError('Failed to delete employee') }
+  }
+
+  const handleResetPassword = async (empId, empName) => {
+    if (!window.confirm(`Reset ${empName}'s password to hps@1234?`)) return
+    setResettingId(empId)
+    try {
+      await axios.patch(`${BASE_URL}/api/employees/${empId}/reset-password`, { newPassword: 'hps@1234' })
+      setResetSuccess(`Password reset for ${empName}`)
+      setTimeout(() => setResetSuccess(''), 3000)
+    } catch { setError('Failed to reset password') }
+    finally { setResettingId(null) }
+  }
+
+  const downloadBarcode = (empId, empName) => {
+    try {
+      const svg = barcodeRefs.current[empId]
+      if (!svg) return
+      const svgData = new XMLSerializer().serializeToString(svg)
+      const url = URL.createObjectURL(new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' }))
+      const a = document.createElement('a')
+      a.href = url; a.download = `${empName || empId}-barcode.svg`
+      document.body.appendChild(a); a.click()
+      document.body.removeChild(a); URL.revokeObjectURL(url)
+    } catch { alert('Failed to download barcode') }
+  }
+
+  const allDepts = ['All', ...DEPARTMENTS.slice(0, -1),
+    ...employees.map(e => e.department).filter(d => d && !DEPARTMENTS.includes(d))]
+  const uniqueDepts = [...new Set(allDepts)]
+
+  const filtered = employees
+    .filter(emp =>
+      (deptFilter === 'All' || emp.department === deptFilter) &&
+      (
+        emp.name?.toLowerCase().includes(search.toLowerCase()) ||
+        emp.empId?.toLowerCase().includes(search.toLowerCase()) ||
+        emp.department?.toLowerCase().includes(search.toLowerCase()) ||
+        emp.position?.toLowerCase().includes(search.toLowerCase())
+      )
+    )
+    .sort((a, b) => {
+      if (sortBy === 'name')    return (a.name || '').localeCompare(b.name || '')
+      if (sortBy === 'dept')    return (a.department || '').localeCompare(b.department || '')
+      if (sortBy === 'joining') return new Date(b.joiningDate || 0) - new Date(a.joiningDate || 0)
+      return 0
+    })
+
+  const inputStyle = {
+    borderRadius: 16, padding: '10px 16px', fontSize: 14, outline: 'none',
+    boxSizing: 'border-box', transition: 'border-color 0.2s',
+    background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)',
+  }
+
+  const formatDate = (d) => d
+    ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '—'
+
+  const selectWrap = { position: 'relative', display: 'block' }
+  const chevronOverlay = {
+    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+    pointerEvents: 'none', color: 'var(--text-muted)',
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 12,
+        alignItems: 'center', justifyContent: 'space-between', marginBottom: 32,
+      }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Employees</h1>
+          <p style={{ marginTop: 4, fontSize: 14, color: 'var(--text-secondary)' }}>
+            {employees.length} registered · {filtered.length} shown
+          </p>
+        </div>
+        <button
+          onClick={() => { setShowForm(true); setEditEmployee(null); setForm(EMPTY_FORM); setCustomDept('') }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: '#1AABDB', color: '#fff', fontSize: 14, fontWeight: 600,
+            padding: '10px 20px', borderRadius: 16, border: 'none', cursor: 'pointer',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1595c0'}
+          onMouseLeave={e => e.currentTarget.style.background = '#1AABDB'}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Employee
+        </button>
+      </div>
+
+      {/* Search + Filters */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
+        {/* Search */}
+        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
+          <span style={{
+            position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+            pointerEvents: 'none', color: 'var(--text-muted)',
+          }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </span>
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search name, ID, position…"
+            style={{ ...inputStyle, width: '100%', paddingLeft: 36 }} />
+        </div>
+
+        {/* Dept filter */}
+        <div style={selectWrap}>
+          <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
+            style={{ ...inputStyle, paddingRight: 32, appearance: 'none', cursor: 'pointer' }}>
+            {uniqueDepts.map(d => <option key={d} value={d}>{d === 'All' ? 'All Departments' : d}</option>)}
+          </select>
+          <span style={chevronOverlay}><ChevronDown /></span>
+        </div>
+
+        {/* Sort */}
+        <div style={selectWrap}>
+          <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+            style={{ ...inputStyle, paddingRight: 32, appearance: 'none', cursor: 'pointer' }}>
+            <option value="name">Sort: Name A–Z</option>
+            <option value="dept">Sort: Department</option>
+            <option value="joining">Sort: Latest Joining</option>
+          </select>
+          <span style={chevronOverlay}><ChevronDown /></span>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {error && (
+        <div style={{
+          marginBottom: 16, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+          color: '#DC2626', padding: '12px 16px', borderRadius: 16, fontSize: 14,
+        }}>{error}</div>
+      )}
+      {resetSuccess && (
+        <div style={{
+          marginBottom: 16, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
+          color: '#059669', padding: '12px 16px', borderRadius: 16, fontSize: 14,
+        }}>{resetSuccess}</div>
+      )}
+
+      {/* Add / Edit Form */}
+      {showForm && (
+        <div ref={formRef} style={{
+          borderRadius: 24, padding: isMobile ? 20 : 32, marginBottom: 32,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.06)', scrollMarginTop: 24,
+          background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+        }}>
+          {/* Form header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <h2 style={{ fontWeight: 700, fontSize: isMobile ? 16 : 18, color: 'var(--text-primary)', margin: 0 }}>
+              {editEmployee ? `Editing: ${editEmployee.name}` : 'Add New Employee'}
+            </h2>
+            <button onClick={() => { setShowForm(false); setEditEmployee(null); setCustomDept('') }}
+              style={{
+                width: 32, height: 32, borderRadius: 12, border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--text-muted)', background: 'var(--surface2)', transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--surface2)'}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: 16,
+          }}>
+            {[
+              { label: 'Employee ID *', key: 'empId',       placeholder: 'e.g. HPS260037', disabled: !!editEmployee, required: true },
+              { label: 'Full Name *',   key: 'name',        placeholder: 'John Doe',        required: true },
+              { label: 'Position',      key: 'position',    placeholder: 'e.g. SDE Intern' },
+              { label: 'Email',         key: 'email',       placeholder: 'employee@hps.com', type: 'email' },
+              { label: 'Joining Date',  key: 'joiningDate', type: 'date' },
+              { label: 'End Date',      key: 'endDate',     type: 'date', placeholder: 'For internships' },
+              { label: 'Salary',        key: 'salary',      placeholder: 'Not Disclosed' },
+              { label: 'Contact',       key: 'contact',     placeholder: '9999999999' },
+            ].filter(f => f.key !== 'endDate' || form.position.toLowerCase().includes('intern')).map(field => (
+              <div key={field.key}>
+                <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>
+                  {field.label}
+                </label>
+                <input type={field.type || 'text'} value={form[field.key]}
+                  onChange={e => setForm({ ...form, [field.key]: e.target.value })}
+                  placeholder={field.placeholder} required={field.required} disabled={field.disabled}
+                  style={{ ...inputStyle, width: '100%', opacity: field.disabled ? 0.5 : 1 }} />
+              </div>
+            ))}
+
+            {/* Team Lead */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Team Lead</label>
+              <div style={selectWrap}>
+                <select value={form.teamLead} onChange={e => setForm({ ...form, teamLead: e.target.value })}
+                  style={{ ...inputStyle, width: '100%', paddingRight: 32, appearance: 'none' }}>
+                  <option value="">— Select team lead —</option>
+                  {teamLeads.map(tl => (
+                    <option key={tl.empId} value={tl.name}>{tl.name} · {tl.position}</option>
+                  ))}
+                  {form.teamLead && !teamLeads.some(tl => tl.name === form.teamLead) && (
+                    <option value={form.teamLead}>{form.teamLead} (current)</option>
+                  )}
+                </select>
+                <span style={chevronOverlay}><ChevronDown /></span>
+              </div>
+              {teamLeads.length === 0 && (
+                <p style={{ fontSize: 12, marginTop: 4, color: 'var(--text-muted)' }}>No TL positions found yet</p>
+              )}
+            </div>
+
+            {/* Department */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Department</label>
+              <div style={selectWrap}>
+                <select value={form.department}
+                  onChange={e => { setForm({ ...form, department: e.target.value }); if (e.target.value !== 'Other') setCustomDept('') }}
+                  style={{ ...inputStyle, width: '100%', paddingRight: 32, appearance: 'none' }}>
+                  <option value="">Select department</option>
+                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <span style={chevronOverlay}><ChevronDown /></span>
+              </div>
+              {form.department === 'Other' && (
+                <input type="text" value={customDept} onChange={e => setCustomDept(e.target.value)}
+                  placeholder="Type department name…" required autoFocus
+                  style={{ ...inputStyle, width: '100%', marginTop: 8, border: '1px solid #1AABDB' }} />
+              )}
+            </div>
+
+            {/* Submit row — spans full width */}
+            <div style={{
+              gridColumn: '1 / -1',
+              display: 'flex', flexWrap: 'wrap', gap: 12, paddingTop: 8,
+            }}>
+              <button type="submit"
+                style={{
+                  background: '#1AABDB', color: '#fff', fontSize: 14, fontWeight: 600,
+                  padding: '10px 24px', borderRadius: 16, border: 'none', cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#1595c0'}
+                onMouseLeave={e => e.currentTarget.style.background = '#1AABDB'}>
+                {editEmployee ? 'Update Employee' : 'Create Employee'}
+              </button>
+              <button type="button" onClick={() => { setShowForm(false); setEditEmployee(null); setCustomDept('') }}
+                style={{
+                  fontSize: 14, padding: '10px 16px', borderRadius: 16, border: 'none', cursor: 'pointer',
+                  color: 'var(--text-secondary)', background: 'var(--surface2)',
+                }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Employee list */}
+      {loading ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            border: '2px solid #1AABDB', borderTopColor: 'transparent',
+            animation: 'emp-spin 0.75s linear infinite',
+          }} />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{
+          textAlign: 'center', padding: '64px 0', borderRadius: 24,
+          background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+        }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+            {search || deptFilter !== 'All' ? 'No employees match your filters.' : 'No employees yet. Add one!'}
+          </p>
+        </div>
+      ) : (
+        <div style={{ borderRadius: 24, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+
+          {/* Desktop table header */}
+          {!isMobile && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr auto',
+              gap: 16, padding: '12px 20px',
+              fontSize: 12, fontWeight: 600,
+              background: 'var(--surface2)', borderBottom: '1px solid var(--card-border)', color: 'var(--text-secondary)',
+            }}>
+              <span>Employee</span><span>Department</span><span>Position</span>
+              <span>Joining</span><span>Project Status</span><span />
+            </div>
+          )}
+
+          {filtered.map((emp, idx) => {
+            const isExpanded = expandedId === emp.empId
+            const isLast = idx === filtered.length - 1
+
+            return (
+              <div key={emp.empId} style={{ borderBottom: isLast ? 'none' : '1px solid var(--card-border)' }}>
+
+                {/* Desktop row */}
+                {!isMobile && (
+                  <div
+                    style={{
+                      display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr auto',
+                      gap: 16, alignItems: 'center', padding: '14px 20px', cursor: 'pointer',
+                      background: isExpanded ? 'var(--surface2)' : 'transparent', transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = 'var(--surface2)' }}
+                    onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = 'transparent' }}
+                    onClick={() => setExpandedId(isExpanded ? null : emp.empId)}>
+
+                    {/* Avatar + name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 10, background: '#1AABDB', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 14, fontWeight: 700,
+                      }}>
+                        {emp.name?.charAt(0)}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{
+                          fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{emp.name}</p>
+                        <p style={{ fontSize: 12, color: '#1AABDB', margin: 0 }}>{emp.empId}</p>
+                      </div>
+                    </div>
+
+                    <span style={{ fontSize: 14, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.department || '—'}</span>
+                    <span style={{ fontSize: 14, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.position || '—'}</span>
+                    <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{formatDate(emp.joiningDate)}</span>
+                    <div><StatusPill status={emp.projectStatus} /></div>
+
+                    <span style={{
+                      color: 'var(--text-muted)', flexShrink: 0,
+                      transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s',
+                      display: 'flex',
+                    }}>
+                      <ChevronDown />
+                    </span>
+                  </div>
+                )}
+
+                {/* Mobile card row */}
+                {isMobile && (
+                  <div
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '14px 16px', cursor: 'pointer',
+                      background: isExpanded ? 'var(--surface2)' : 'transparent',
+                    }}
+                    onClick={() => setExpandedId(isExpanded ? null : emp.empId)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 10, background: '#1AABDB', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 14, fontWeight: 700,
+                      }}>
+                        {emp.name?.charAt(0)}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{
+                          fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{emp.name}</p>
+                        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{emp.empId} · {emp.department || '—'}</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {emp.projectStatus && <StatusPill status={emp.projectStatus} />}
+                      <span style={{
+                        color: 'var(--text-muted)',
+                        transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s',
+                        display: 'flex',
+                      }}>
+                        <ChevronDown />
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Expanded panel */}
+                {isExpanded && (
+                  <div style={{
+                    padding: isMobile ? '8px 16px 20px' : '8px 24px 20px',
+                    background: 'var(--surface2)', borderTop: '1px solid var(--card-border)',
+                  }}>
+                    {/* Detail grid */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+                      columnGap: 24, rowGap: 12, marginBottom: 20, marginTop: 12,
+                    }}>
+                      {[
+                        { label: 'Email',        value: emp.email },
+                        { label: 'Contact',      value: emp.contact },
+                        { label: 'Team Lead',    value: emp.teamLead },
+                        { label: 'Salary',       value: emp.salary },
+                        { label: 'Joining Date', value: formatDate(emp.joiningDate) },
+                        { label: 'End Date',     value: emp.endDate ? formatDate(emp.endDate) : null },
+                        { label: 'Position',     value: emp.position },
+                      ].map(({ label, value }) => value ? (
+                        <div key={label}>
+                          <p style={{ fontSize: 12, fontWeight: 500, marginBottom: 2, color: 'var(--text-muted)' }}>{label}</p>
+                          <p style={{ fontSize: 14, color: 'var(--text-primary)', margin: 0, wordBreak: 'break-all' }}>{value}</p>
+                        </div>
+                      ) : null)}
+                    </div>
+
+                    {/* Project */}
+                    {emp.project && (
+                      <div style={{
+                        borderRadius: 12, padding: '12px 16px', marginBottom: 16,
+                        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                      }}>
+                        <p style={{ fontSize: 12, fontWeight: 500, marginBottom: 2, color: 'var(--text-muted)' }}>Project</p>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{emp.project}</p>
+                      </div>
+                    )}
+
+                    {/* EOD */}
+                    {emp.dailyWorkStatus && (
+                      <div style={{
+                        borderRadius: 12, padding: '12px 16px', marginBottom: 16,
+                        background: 'rgba(26,171,219,0.06)', border: '1px solid rgba(26,171,219,0.2)',
+                      }}>
+                        <p style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, color: '#1AABDB' }}>Today's Work</p>
+                        <p style={{ fontSize: 14, fontStyle: 'italic', color: 'var(--text-secondary)', margin: 0 }}>"{emp.dailyWorkStatus}"</p>
+                      </div>
+                    )}
+
+                    {/* Barcode */}
+                    {emp.barcodeId && (
+                      <div style={{
+                        borderRadius: 12, padding: 16, marginBottom: 16,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+                        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                      }}>
+                        <svg ref={el => barcodeRefs.current[emp.empId] = el} />
+                        <button onClick={() => downloadBarcode(emp.empId, emp.name)}
+                          style={{
+                            fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 12, cursor: 'pointer',
+                            background: 'rgba(26,171,219,0.1)', color: '#1AABDB',
+                            border: '1px solid rgba(26,171,219,0.2)', transition: 'background 0.15s',
+                          }}>
+                          Download Barcode
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 4 }}>
+                      <button onClick={() => handleEdit(emp)}
+                        style={{
+                          fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 12, cursor: 'pointer',
+                          color: '#1AABDB', background: 'rgba(26,171,219,0.08)', border: '1px solid rgba(26,171,219,0.2)',
+                        }}>
+                        ✏ Edit
+                      </button>
+                      <button onClick={() => handleResetPassword(emp.empId, emp.name)}
+                        disabled={resettingId === emp.empId}
+                        style={{
+                          fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 12,
+                          cursor: resettingId === emp.empId ? 'not-allowed' : 'pointer',
+                          color: '#d97706', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+                          opacity: resettingId === emp.empId ? 0.6 : 1,
+                        }}>
+                        {resettingId === emp.empId ? 'Resetting…' : '🔑 Reset PW'}
+                      </button>
+                      <button onClick={() => handleDelete(emp.empId)}
+                        style={{
+                          fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 12, cursor: 'pointer',
+                          color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                        }}>
+                        🗑 Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default Employees

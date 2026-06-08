@@ -1,0 +1,12 @@
+﻿@import "tailwindcss";
+
+:root {
+  --hps-blue: #1AABDB;
+  --hps-dark: #1C2333;
+  --hps-light: #E8F7FC;
+}
+
+#qr-reader__dashboard { display: none !important; }
+#qr-reader__scan_region { border: none !important; background: transparent !important; }
+#qr-reader img { display: none !important; }
+#qr-reader { border: none !important; }
