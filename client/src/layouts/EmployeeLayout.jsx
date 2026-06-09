@@ -6,12 +6,19 @@ import NotificationBell from '../components/NotificationBell'
 function ThemeToggle({ collapsed }) {
   const { theme, toggleTheme } = useTheme()
   return (
-    <button onClick={toggleTheme}
-      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-      style={{ color: 'rgba(255,255,255,0.45)', justifyContent: collapsed ? 'center' : 'flex-start' }}
+    <button
+      onClick={toggleTheme}
       title={collapsed ? (theme === 'dark' ? 'Light Mode' : 'Dark Mode') : ''}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '10px 16px', borderRadius: '12px', fontSize: '0.875rem',
+        fontWeight: 500, transition: 'all 0.2s', border: 'none', cursor: 'pointer',
+        color: 'rgba(255,255,255,0.45)', background: 'transparent',
+        justifyContent: collapsed ? 'center' : 'flex-start',
+      }}
       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,171,219,0.1)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
+    >
       {theme === 'dark' ? (
         <>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -66,7 +73,6 @@ function EmployeeLayout() {
 
   const canScan = employee?.isAttendanceLeader === true
 
-  // Items shown in bottom nav bar
   const navItems = [
     {
       name: 'Home', path: '/employee/dashboard', mobileLabel: 'Home',
@@ -110,7 +116,6 @@ function EmployeeLayout() {
     },
   ]
 
-  // Desktop-only items that go in the More sheet on mobile
   const moreItems = [
     {
       name: 'Tasks', path: '/employee/tasks',
@@ -133,106 +138,162 @@ function EmployeeLayout() {
     }] : []),
   ]
 
-  // All items for desktop sidebar
-  const allNavItems = [
-    ...navItems,
-    ...moreItems,
-  ]
+  const allNavItems = [...navItems, ...moreItems]
 
   if (!employee) return null
 
   return (
-    <div className="flex min-h-screen transition-colors duration-300"
-      style={{ background: 'var(--bg)', fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+    <div style={{
+      display: 'flex', minHeight: '100vh', transition: 'background 0.3s',
+      background: 'var(--bg)', fontFamily: "'Segoe UI', system-ui, sans-serif"
+    }}>
 
       {/* ── Desktop Sidebar ── */}
-      <div className={`${isMobile ? 'hidden' : 'flex'} bg-[#1C2333] flex-col shrink-0 fixed top-0 left-0 h-full z-30 transition-all duration-300 overflow-hidden`}
-        style={{ width: sidebarW }}>
-
-        <div className="px-4 py-5 border-b border-white/10 flex items-center justify-between">
-          {!collapsed && (
-            <button onClick={() => navigate('/employee/dashboard')} className="min-w-0 text-left">
-              <img src="/hps_new_logo_white.png" alt="HPS" className="h-16 object-contain cursor-pointer" />
-              <p className="text-xs text-white/40 mt-1">Employee Portal</p>
-            </button>
-          )}
-          {collapsed && (
-            <button onClick={() => navigate('/employee/dashboard')}
-              className="w-9 h-9 rounded-lg bg-[#1AABDB] flex items-center justify-center text-white font-bold text-sm mx-auto mb-2">
-              H
-            </button>
-          )}
-          <button onClick={() => setCollapsed(c => !c)}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all flex-shrink-0"
-            style={{ color: 'rgba(255,255,255,0.45)', marginLeft: collapsed ? 'auto' : '0', marginRight: collapsed ? 'auto' : '0' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,171,219,0.15)'; e.currentTarget.style.color = '#1AABDB' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>
-            {collapsed
-              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            }
-          </button>
-        </div>
-
-        <div className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {allNavItems.map(item => {
-            const active = location.pathname === item.path
-            return (
-              <button key={item.path} onClick={() => navigate(item.path)}
-                title={collapsed ? item.name : ''}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  active ? 'bg-[#1AABDB] text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'
-                }`}
-                style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}>
-                {item.icon(active)}
-                {!collapsed && item.name}
+      {!isMobile && (
+        <div style={{
+          width: sidebarW, background: '#1C2333', display: 'flex', flexDirection: 'column',
+          flexShrink: 0, position: 'fixed', top: 0, left: 0, height: '100%',
+          zIndex: 30, transition: 'width 0.3s', overflow: 'hidden'
+        }}>
+          {/* Sidebar header */}
+          <div style={{
+            padding: '20px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+          }}>
+            {!collapsed ? (
+              <button onClick={() => navigate('/employee/dashboard')}
+                style={{ minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <img src="/hps_new_logo_white.png" alt="HPS" style={{ height: '64px', objectFit: 'contain', cursor: 'pointer' }} />
+                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '4px', margin: '4px 0 0' }}>Employee Portal</p>
               </button>
-            )
-          })}
-        </div>
+            ) : (
+              <button onClick={() => navigate('/employee/dashboard')}
+                style={{
+                  width: '36px', height: '36px', borderRadius: '8px', background: '#1AABDB',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 700, fontSize: '0.875rem',
+                  margin: '0 auto 8px', border: 'none', cursor: 'pointer'
+                }}>
+                H
+              </button>
+            )}
+            <button
+              onClick={() => setCollapsed(c => !c)}
+              style={{
+                width: '32px', height: '32px', borderRadius: '12px', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
+                flexShrink: 0, border: 'none', cursor: 'pointer',
+                color: 'rgba(255,255,255,0.45)', background: 'transparent',
+                marginLeft: collapsed ? 'auto' : '0', marginRight: collapsed ? 'auto' : '0'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,171,219,0.15)'; e.currentTarget.style.color = '#1AABDB' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
+            >
+              {collapsed
+                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              }
+            </button>
+          </div>
 
-        <div className="px-3 pb-2 border-t border-white/10 pt-2">
-          <ThemeToggle collapsed={collapsed} />
-        </div>
+          {/* Nav items */}
+          <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
+            {allNavItems.map(item => {
+              const active = location.pathname === item.path
+              return (
+                <button key={item.path} onClick={() => navigate(item.path)}
+                  title={collapsed ? item.name : ''}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '10px 12px', borderRadius: '12px', fontSize: '0.875rem',
+                    fontWeight: 500, transition: 'all 0.2s', border: 'none', cursor: 'pointer',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    background: active ? '#1AABDB' : 'transparent',
+                    color: active ? '#fff' : 'rgba(148,163,184,1)',
+                  }}
+                  onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff' } }}
+                  onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(148,163,184,1)' } }}
+                >
+                  {item.icon(active)}
+                  {!collapsed && item.name}
+                </button>
+              )
+            })}
+          </div>
 
-        <div className="p-3 border-t border-white/10">
-          {!collapsed && (
-            <div className="flex items-center gap-3 px-3 py-3 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-[#1AABDB] flex items-center justify-center text-white font-bold text-sm shrink-0">
-                {employee.name?.charAt(0)}
+          {/* Theme toggle */}
+          <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <ThemeToggle collapsed={collapsed} />
+          </div>
+
+          {/* Profile + Logout */}
+          <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            {!collapsed && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', marginBottom: '8px' }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '12px', background: '#1AABDB',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 700, fontSize: '0.875rem', flexShrink: 0
+                }}>
+                  {employee.name?.charAt(0)}
+                </div>
+                <div style={{ overflow: 'hidden' }}>
+                  <p style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{employee.name}</p>
+                  <p style={{ color: 'rgba(148,163,184,1)', fontSize: '0.75rem', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{employee.empId}</p>
+                </div>
               </div>
-              <div className="overflow-hidden">
-                <p className="text-white text-xs font-semibold truncate">{employee.name}</p>
-                <p className="text-slate-400 text-xs truncate">{employee.empId}</p>
-              </div>
-            </div>
-          )}
-          <button onClick={handleLogout}
-            className="w-full bg-white/10 hover:bg-white/20 text-slate-300 py-2.5 rounded-xl text-xs font-medium transition">
-            {collapsed ? '→' : 'Logout'}
-          </button>
+            )}
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%', background: 'rgba(255,255,255,0.1)', color: 'rgba(203,213,225,1)',
+                padding: '10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 500,
+                border: 'none', cursor: 'pointer', transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+            >
+              {collapsed ? '→' : 'Logout'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Main content ── */}
-      <div className="flex flex-col min-h-screen transition-colors duration-300"
-        style={{ marginLeft: isMobile ? '0' : sidebarW, flex: 1 }}>
+      <div style={{
+        display: 'flex', flexDirection: 'column', minHeight: '100vh',
+        transition: 'all 0.3s', marginLeft: isMobile ? '0' : sidebarW, flex: 1
+      }}>
 
         {/* Topbar */}
-        <div className={`sticky top-0 z-20 flex items-center justify-between shrink-0 ${isMobile ? 'h-14 px-4' : 'h-16 px-8'}`}
-          style={{ background: 'var(--topbar-bg)', borderBottom: '1px solid var(--topbar-border)' }}>
-
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 20,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+          height: isMobile ? '56px' : '64px',
+          padding: isMobile ? '0 16px' : '0 32px',
+          background: 'var(--topbar-bg)', borderBottom: '1px solid var(--topbar-border)'
+        }}>
           {isMobile ? (
             <>
-              <button onClick={() => navigate('/employee/dashboard')} className="flex items-center gap-2">
-                <img src="/hps_new_logo.png" alt="HPS" className="h-8 object-contain"
+              <button onClick={() => navigate('/employee/dashboard')}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <img src="/hps_new_logo.png" alt="HPS" style={{ height: '32px', objectFit: 'contain' }}
                   onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }} />
-                <div className="w-8 h-8 rounded-lg bg-[#1AABDB] items-center justify-center text-white font-bold text-sm hidden">H</div>
+                <div style={{
+                  width: '32px', height: '32px', borderRadius: '8px', background: '#1AABDB',
+                  alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 700, fontSize: '0.875rem', display: 'none'
+                }}>H</div>
               </button>
-              <div className="flex items-center gap-3">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <NotificationBell empId={employee.empId} />
-                <button onClick={() => setShowProfileMenu(true)}
-                  className="w-9 h-9 rounded-full bg-[#1AABDB] text-white font-bold flex items-center justify-center text-sm">
+                <button
+                  onClick={() => setShowProfileMenu(true)}
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '50%', background: '#1AABDB',
+                    color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: '0.875rem', border: 'none', cursor: 'pointer'
+                  }}>
                   {employee.name?.charAt(0)}
                 </button>
               </div>
@@ -240,16 +301,20 @@ function EmployeeLayout() {
           ) : (
             <>
               <div>
-                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>HPS Employee Portal</h2>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Welcome back, {employee.name?.split(' ')[0]}</p>
+                <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>HPS Employee Portal</h2>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Welcome back, {employee.name?.split(' ')[0]}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <NotificationBell empId={employee.empId} />
-                <div className="text-right">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{employee.name}</p>
-                  <p className="text-xs text-[#1AABDB]">{employee.position || 'HPS Team'}</p>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{employee.name}</p>
+                  <p style={{ fontSize: '0.75rem', color: '#1AABDB', margin: 0 }}>{employee.position || 'HPS Team'}</p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-[#1AABDB] flex items-center justify-center text-white font-bold text-sm">
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: '12px', background: '#1AABDB',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 700, fontSize: '0.875rem'
+                }}>
                   {employee.name?.charAt(0)}
                 </div>
               </div>
@@ -258,77 +323,121 @@ function EmployeeLayout() {
         </div>
 
         {/* Page content */}
-        <main className={`flex-1 p-4 md:p-8 transition-colors duration-300 ${isMobile ? 'pb-24' : 'pb-8'}`}
-          style={{ background: 'var(--bg)' }}>
+        <main style={{
+          flex: 1, padding: isMobile ? '16px' : '32px',
+          paddingBottom: isMobile ? '96px' : '32px',
+          transition: 'background 0.3s', background: 'var(--bg)'
+        }}>
           <Outlet />
         </main>
       </div>
 
       {/* ── Mobile Bottom Nav ── */}
       {isMobile && (
-        <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-stretch"
-          style={{ background: 'var(--topbar-bg)', borderTop: '1px solid var(--topbar-border)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <nav style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 30,
+          display: 'flex', alignItems: 'stretch',
+          background: 'var(--topbar-bg)', borderTop: '1px solid var(--topbar-border)',
+          paddingBottom: 'env(safe-area-inset-bottom)'
+        }}>
           {navItems.map(item => {
             const active = location.pathname === item.path
             return (
               <button key={item.path} onClick={() => navigate(item.path)}
-                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative transition-all"
-                style={{ color: active ? '#1AABDB' : 'var(--text-muted)' }}>
+                style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: '4px', padding: '8px 0',
+                  position: 'relative', transition: 'all 0.2s', border: 'none', cursor: 'pointer',
+                  background: 'transparent', color: active ? '#1AABDB' : 'var(--text-muted)'
+                }}>
                 {item.icon(active)}
-                <span className="text-[10px] font-semibold leading-none">{item.mobileLabel}</span>
-                {active && <span className="absolute bottom-0 w-8 h-0.5 rounded-full bg-[#1AABDB]" style={{ marginBottom: 'env(safe-area-inset-bottom)' }} />}
+                <span style={{ fontSize: '10px', fontWeight: 600, lineHeight: 1 }}>{item.mobileLabel}</span>
+                {active && (
+                  <span style={{
+                    position: 'absolute', bottom: 'env(safe-area-inset-bottom)',
+                    width: '32px', height: '2px', borderRadius: '9999px', background: '#1AABDB'
+                  }} />
+                )}
               </button>
             )
           })}
 
           {/* More button */}
-          <button onClick={() => setShowMore(true)}
-            className="flex-1 flex flex-col items-center justify-center gap-1 py-2"
-            style={{ color: 'var(--text-muted)' }}>
+          <button
+            onClick={() => setShowMore(true)}
+            style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: '4px', padding: '8px 0',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)'
+            }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/>
             </svg>
-            <span className="text-[10px] font-semibold leading-none">More</span>
+            <span style={{ fontSize: '10px', fontWeight: 600, lineHeight: 1 }}>More</span>
           </button>
         </nav>
       )}
 
       {/* ── More sheet ── */}
       {showMore && (
-        <div className="fixed inset-0 z-50 bg-black/40 md:hidden" onClick={() => setShowMore(false)}>
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-3xl p-6"
-            style={{ background: 'var(--card-bg)' }}
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setShowMore(false)}>
+          <div
+            style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              borderRadius: '24px 24px 0 0', padding: '24px',
+              background: 'var(--card-bg)'
+            }}
             onClick={e => e.stopPropagation()}>
 
-            <div className="w-10 h-1 rounded-full bg-slate-300 mx-auto mb-5" />
+            <div style={{ width: '40px', height: '4px', borderRadius: '9999px', background: '#CBD5E1', margin: '0 auto 20px' }} />
 
             {moreItems.map(item => {
               const active = location.pathname === item.path
               return (
                 <button key={item.path}
                   onClick={() => { navigate(item.path); setShowMore(false) }}
-                  className="w-full flex items-center gap-3 py-3.5 border-b text-sm font-medium"
-                  style={{ color: active ? '#1AABDB' : 'var(--text-primary)', borderColor: 'var(--card-border)' }}>
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '14px 0', borderBottom: '1px solid var(--card-border)',
+                    fontSize: '0.875rem', fontWeight: 500, background: 'none', border: 'none',
+                    borderBottom: '1px solid var(--card-border)',
+                    cursor: 'pointer', color: active ? '#1AABDB' : 'var(--text-primary)'
+                  }}>
                   <span style={{ color: active ? '#1AABDB' : 'var(--text-muted)' }}>{item.icon(active)}</span>
                   {item.name}
-                  {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#1AABDB]" />}
+                  {active && <span style={{ marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%', background: '#1AABDB' }} />}
                 </button>
               )
             })}
 
-            <button onClick={() => { navigate('/employee/profile'); setShowMore(false) }}
-              className="w-full flex items-center gap-3 py-3.5 border-b text-sm font-medium"
-              style={{ color: 'var(--text-primary)', borderColor: 'var(--card-border)' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+            <button
+              onClick={() => { navigate('/employee/profile'); setShowMore(false) }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '14px 0', borderBottom: '1px solid var(--card-border)',
+                fontSize: '0.875rem', fontWeight: 500, background: 'none', border: 'none',
+                borderBottom: '1px solid var(--card-border)',
+                cursor: 'pointer', color: 'var(--text-primary)'
+              }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
               </svg>
               My Profile
             </button>
 
-            <button onClick={() => { toggleTheme(); setShowMore(false) }}
-              className="w-full flex items-center gap-3 py-3.5 border-b text-sm font-medium"
-              style={{ color: 'var(--text-primary)', borderColor: 'var(--card-border)' }}>
-              <span style={{ color: 'var(--text-muted)' }}>
+            <button
+              onClick={() => { toggleTheme(); setShowMore(false) }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '14px 0', borderBottom: '1px solid var(--card-border)',
+                fontSize: '0.875rem', fontWeight: 500, background: 'none', border: 'none',
+                borderBottom: '1px solid var(--card-border)',
+                cursor: 'pointer', color: 'var(--text-primary)'
+              }}>
+              <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
                 {theme === 'dark'
                   ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>
                   : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -337,8 +446,14 @@ function EmployeeLayout() {
               {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
             </button>
 
-            <button onClick={handleLogout}
-              className="w-full flex items-center gap-3 py-3.5 text-sm font-medium text-red-500 mt-1">
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '14px 0', fontSize: '0.875rem', fontWeight: 500,
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#EF4444', marginTop: '4px'
+              }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                 <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
@@ -349,25 +464,46 @@ function EmployeeLayout() {
         </div>
       )}
 
-      {/* Mobile profile sheet */}
+      {/* ── Mobile profile sheet ── */}
       {showProfileMenu && (
-        <div className="fixed inset-0 z-50 bg-black/40 md:hidden" onClick={() => setShowProfileMenu(false)}>
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-3xl p-6"
-            style={{ background: 'var(--card-bg)' }}
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setShowProfileMenu(false)}>
+          <div
+            style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              borderRadius: '24px 24px 0 0', padding: '24px',
+              background: 'var(--card-bg)'
+            }}
             onClick={e => e.stopPropagation()}>
-            <div className="flex flex-col items-center mb-6">
-              <div className="w-16 h-16 rounded-full bg-[#1AABDB] flex items-center justify-center text-white font-bold text-xl">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%', background: '#1AABDB',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontWeight: 700, fontSize: '1.25rem'
+              }}>
                 {employee.name?.charAt(0)}
               </div>
-              <h3 className="mt-3 font-semibold" style={{ color: 'var(--text-primary)' }}>{employee.name}</h3>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{employee.empId}</p>
+              <h3 style={{ marginTop: '12px', fontWeight: 600, color: 'var(--text-primary)', margin: '12px 0 0' }}>{employee.name}</h3>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>{employee.empId}</p>
             </div>
-            <button onClick={() => { setShowProfileMenu(false); navigate('/employee/profile') }}
-              className="w-full text-left py-4 border-b text-sm"
-              style={{ color: 'var(--text-primary)', borderColor: 'var(--card-border)' }}>
+            <button
+              onClick={() => { setShowProfileMenu(false); navigate('/employee/profile') }}
+              style={{
+                width: '100%', textAlign: 'left', padding: '16px 0',
+                borderBottom: '1px solid var(--card-border)', fontSize: '0.875rem',
+                background: 'none', border: 'none', borderBottom: '1px solid var(--card-border)',
+                cursor: 'pointer', color: 'var(--text-primary)'
+              }}>
               👤 My Profile
             </button>
-            <button onClick={handleLogout} className="w-full text-left py-4 text-sm text-red-500">
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%', textAlign: 'left', padding: '16px 0',
+                fontSize: '0.875rem', background: 'none', border: 'none',
+                cursor: 'pointer', color: '#EF4444'
+              }}>
               🚪 Logout
             </button>
           </div>
