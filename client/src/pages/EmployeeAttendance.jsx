@@ -9,6 +9,7 @@ function EmployeeAttendance() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('All')
   const [employee, setEmployee] = useState(null)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
   useEffect(() => {
     const stored = localStorage.getItem('employeeAuth')
@@ -16,6 +17,9 @@ function EmployeeAttendance() {
     const emp = JSON.parse(stored)
     setEmployee(emp)
     fetchAttendance(emp.empId)
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const fetchAttendance = async (empId) => {
@@ -57,19 +61,29 @@ function EmployeeAttendance() {
     <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
 
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between flex-wrap gap-4">
+      <div style={{
+        marginBottom: '32px', display: 'flex', alignItems: 'flex-start',
+        justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px'
+      }}>
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div style={{ width: '4px', height: '24px', borderRadius: '4px', background: '#1AABDB' }} />
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>My Attendance</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <div style={{ width: '4px', height: '24px', borderRadius: '4px', background: '#1AABDB', flexShrink: 0 }} />
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>My Attendance</h1>
           </div>
-          <p className="text-sm ml-3" style={{ color: 'var(--text-secondary)' }}>{records.length} total records</p>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0 0 0 12px' }}>
+            {records.length} total records
+          </p>
         </div>
+
         {/* Attendance % badge */}
-        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl" style={{ background: 'rgba(26,171,219,0.08)', border: '1px solid rgba(26,171,219,0.2)' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '12px',
+          padding: '12px 20px', borderRadius: '16px',
+          background: 'rgba(26,171,219,0.08)', border: '1px solid rgba(26,171,219,0.2)'
+        }}>
           <div>
-            <p className="text-xs font-medium" style={{ color: 'rgba(26,171,219,0.7)' }}>Attendance Rate</p>
-            <p className="text-2xl font-bold" style={{ color: '#1AABDB' }}>{attendancePct}%</p>
+            <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'rgba(26,171,219,0.7)', margin: '0 0 2px' }}>Attendance Rate</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1AABDB', margin: 0 }}>{attendancePct}%</p>
           </div>
           {/* Mini progress ring */}
           <svg width="44" height="44" viewBox="0 0 44 44">
@@ -84,67 +98,120 @@ function EmployeeAttendance() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
         {statCards.map(stat => (
-          <div key={stat.label} className="rounded-2xl p-4 transition-all duration-200"
-            style={{ background: stat.bg, border: `1px solid ${stat.border}` }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${stat.border}`; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-            <p className="text-3xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
-            <p className="text-xs font-medium mt-1" style={{ color: stat.color, opacity: 0.8 }}>{stat.label}</p>
+          <div key={stat.label}
+            style={{
+              borderRadius: '16px', padding: '16px', transition: 'all 0.2s',
+              background: stat.bg, border: `1px solid ${stat.border}`
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${stat.border}` }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}>
+            <p style={{ fontSize: '1.875rem', fontWeight: 700, color: stat.color, margin: '0 0 4px' }}>{stat.value}</p>
+            <p style={{ fontSize: '0.75rem', fontWeight: 500, color: stat.color, opacity: 0.8, margin: 0 }}>{stat.label}</p>
           </div>
         ))}
       </div>
 
       {/* Filter pills */}
-      <div className="flex gap-2 mb-6 flex-wrap">
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
         {['All', 'Present', 'Late', 'Absent', 'On Leave'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className="text-xs px-4 py-2 rounded-full font-semibold transition-all"
-            style={filter === f
-              ? { background: '#1AABDB', color: '#fff', border: '1px solid #1AABDB' }
-              : { background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)' }}
-            onMouseEnter={(e) => { if (filter !== f) e.currentTarget.style.borderColor = '#1AABDB' }}
-            onMouseLeave={(e) => { if (filter !== f) e.currentTarget.style.borderColor = 'var(--card-border)' }}>
+            style={{
+              fontSize: '0.75rem', padding: '8px 16px', borderRadius: '9999px',
+              fontWeight: 600, transition: 'all 0.2s', cursor: 'pointer',
+              ...(filter === f
+                ? { background: '#1AABDB', color: '#fff', border: '1px solid #1AABDB' }
+                : { background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)' })
+            }}
+            onMouseEnter={e => { if (filter !== f) e.currentTarget.style.borderColor = '#1AABDB' }}
+            onMouseLeave={e => { if (filter !== f) e.currentTarget.style.borderColor = 'var(--card-border)' }}>
             {f}
           </button>
         ))}
       </div>
 
-      {/* Table */}
+      {/* Table / Empty / Loading */}
       {loading ? (
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Loading...</p>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No attendance records found.</p>
+        <div style={{
+          textAlign: 'center', padding: '64px 16px', borderRadius: '16px',
+          background: 'var(--card-bg)', border: '1px solid var(--card-border)'
+        }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>No attendance records found.</p>
+        </div>
+      ) : isMobile ? (
+        /* Mobile card list */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {filtered.map(record => (
+            <div key={record.id} style={{
+              borderRadius: '16px', padding: '16px',
+              background: 'var(--card-bg)', border: '1px solid var(--card-border)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px' }}>
+                    {new Date(record.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    {new Date(record.timestamp).toLocaleDateString('en-IN', { weekday: 'long' })}
+                  </p>
+                </div>
+                <span style={{
+                  fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px',
+                  borderRadius: '9999px', flexShrink: 0, ...statusStyle(record.status)
+                }}>
+                  {record.status}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                {record.status === 'Absent' ? '—'
+                  : new Date(record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          ))}
         </div>
       ) : (
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-          <table className="w-full">
+        /* Desktop table */
+        <div style={{ borderRadius: '16px', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'rgba(26,171,219,0.03)' }}>
                 {['Date', 'Day', 'Status', 'Time'].map(h => (
-                  <th key={h} className="text-left text-xs font-semibold px-6 py-4" style={{ color: 'var(--text-secondary)' }}>{h}</th>
+                  <th key={h} style={{
+                    textAlign: 'left', fontSize: '0.75rem', fontWeight: 600,
+                    padding: '16px 24px', color: 'var(--text-secondary)'
+                  }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map(record => (
-                <tr key={record.id} style={{ borderBottom: '1px solid var(--card-border)', transition: 'background 0.15s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(26,171,219,0.03)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                  <td className="px-6 py-4 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                <tr key={record.id}
+                  style={{ borderBottom: '1px solid var(--card-border)', transition: 'background 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(26,171,219,0.03)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '16px 24px', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
                     {new Date(record.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </td>
-                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                     {new Date(record.timestamp).toLocaleDateString('en-IN', { weekday: 'long' })}
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs font-semibold px-3 py-1 rounded-full" style={statusStyle(record.status)}>
+                  <td style={{ padding: '16px 24px' }}>
+                    <span style={{
+                      fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px',
+                      borderRadius: '9999px', ...statusStyle(record.status)
+                    }}>
                       {record.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                     {record.status === 'Absent' ? '—'
                       : new Date(record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                   </td>
