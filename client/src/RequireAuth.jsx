@@ -5,11 +5,11 @@ export default function RequireAuth({ children, role }) {
   const employee = localStorage.getItem('employeeToken')
 
   if (role === 'admin' && !admin) {
-    return <Navigate to=" " replace />
+    return <Navigate to="/login" replace />
   }
 
   if (role === 'employee' && !employee) {
-    return <Navigate to=" " replace />
+    return <Navigate to="/employee/login" replace />
   }
 
   return children
