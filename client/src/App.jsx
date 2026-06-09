@@ -28,6 +28,7 @@ import EmployeeLayout from './layouts/EmployeeLayout'
 
 import ScrollToTop from './components/ScrollToTop'
 import RequireAuth from './RequireAuth.jsx'
+import RequireLeader from './RequireLeader,jsx'
 
 function App() {
   return (
@@ -40,8 +41,14 @@ function App() {
         <Route path="/" element={<ScanPage />} />
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/employee/login" element={<EmployeeLogin />} />
-        <Route path="/scan" element={<ScannerTerminal />} />
-
+        <Route
+           path="/scan"
+            element={
+           <RequireLeader>
+            <ScannerTerminal />
+             </RequireLeader>
+           }
+        />
         {/* 🔐 ADMIN ROUTES (PROTECTED) */}
         <Route
           path="/admin"
