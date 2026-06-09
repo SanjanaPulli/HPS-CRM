@@ -27,7 +27,7 @@ import AdminLayout from './layouts/AdminLayout'
 import EmployeeLayout from './layouts/EmployeeLayout'
 
 import ScrollToTop from './components/ScrollToTop'
-import RequireAuth from './RequireAuth'
+import RequireAuth from './RequireAuth.jsx'
 
 function App() {
   return (
