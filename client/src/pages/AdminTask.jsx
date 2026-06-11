@@ -4,14 +4,15 @@ import BASE_URL from "../config";
 
 const API = `${BASE_URL}/api`;
 
-const PROJECT_STATUSES = ["Not Started", "In Progress", "On Hold", "Completed"];
-const TASK_STATUSES    = ["Not Started", "In Progress", "On Hold", "Completed"];
+const PROJECT_STATUSES = ["Not Started", "In Progress", "Under Review", "On Hold", "Completed"];
+const TASK_STATUSES    = ["Not Started", "In Progress", "Under Review", "On Hold", "Completed"];
 const PRIORITIES       = ["low", "medium", "high"];
 
 const STATUS_CFG = {
   "Not Started": { color: "#94A3B8", bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)", dot: "#94A3B8" },
   "In Progress": { color: "#F59E0B", bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.2)",  dot: "#F59E0B" },
   "On Hold":     { color: "#EF4444", bg: "rgba(239,68,68,0.1)",   border: "rgba(239,68,68,0.2)",   dot: "#EF4444" },
+  "Under Review": { color: "#1AABDB", bg: "rgba(26,171,219,0.1)",  border: "rgba(26,171,219,0.2)",  dot: "#1AABDB" },
   "Completed":   { color: "#10B981", bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.2)",  dot: "#10B981" },
 };
 
@@ -154,7 +155,7 @@ function TaskFormFields({ taskForm, setTaskForm }) {
         <div>
           <label style={labelStyle}>Priority</label>
           <select value={taskForm.priority} onChange={e => setTaskForm(p => ({ ...p, priority: e.target.value }))}
-            style={inputStyle}>
+            style={{ ...inputStyle, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
             {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
           </select>
         </div>
@@ -167,7 +168,7 @@ function TaskFormFields({ taskForm, setTaskForm }) {
       <div>
         <label style={labelStyle}>Status</label>
         <select value={taskForm.status} onChange={e => setTaskForm(p => ({ ...p, status: e.target.value }))}
-          style={inputStyle}>
+          style={{ ...inputStyle, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
           {TASK_STATUSES.map(s => <option key={s}>{s}</option>)}
         </select>
       </div>
@@ -181,7 +182,6 @@ function ProjectCard({ project, onStatusChange, onDelete, onAddTask, onEditTask,
   const done  = project.tasks.filter(t => t.status === "Completed").length;
   const total = project.tasks.length;
   const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
-  const c     = STATUS_CFG[project.status] || STATUS_CFG["Not Started"];
 
   return (
     <div style={{
@@ -229,7 +229,7 @@ function ProjectCard({ project, onStatusChange, onDelete, onAddTask, onEditTask,
           <select value={project.status} onChange={e => onStatusChange(project.id, e.target.value)}
             style={{
               padding: "4px 8px", borderRadius: 8, fontSize: 12, fontWeight: 600, outline: "none", cursor: "pointer",
-              background: c.bg, color: c.color, border: `1px solid ${c.border}`,
+              background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)',
             }}>
             {PROJECT_STATUSES.map(s => <option key={s}>{s}</option>)}
           </select>
@@ -282,7 +282,6 @@ function ProjectCard({ project, onStatusChange, onDelete, onAddTask, onEditTask,
               </button>
             </div>
           ) : project.tasks.map(task => {
-            const tc = STATUS_CFG[task.status] || STATUS_CFG["Not Started"];
             return (
               <div key={task.id}
                 className="task-row"
@@ -316,7 +315,7 @@ function ProjectCard({ project, onStatusChange, onDelete, onAddTask, onEditTask,
                     <select value={task.status} onChange={e => onTaskStatus(task.id, e.target.value)}
                       style={{
                         padding: "2px 8px", borderRadius: 8, fontSize: 12, fontWeight: 600, outline: "none", cursor: "pointer",
-                        background: tc.bg, color: tc.color, border: `1px solid ${tc.border}`,
+                        background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)',
                       }}>
                       {TASK_STATUSES.map(s => <option key={s}>{s}</option>)}
                     </select>
@@ -331,7 +330,6 @@ function ProjectCard({ project, onStatusChange, onDelete, onAddTask, onEditTask,
                     <span style={{ fontSize: 10, color: "var(--text-muted)" }}>by {task.assignedBy}</span>
                   </div>
                 </div>
-                {/* hover action buttons */}
                 <div className="task-actions" style={{
                   display: "flex", gap: 4, opacity: 0, transition: "opacity 0.15s", flexShrink: 0,
                 }}>
@@ -371,7 +369,6 @@ function ProjectCard({ project, onStatusChange, onDelete, onAddTask, onEditTask,
   );
 }
 
-// ── Spinner keyframe (injected once) ─────────────────────────────────────────
 const spinnerStyle = document.createElement("style");
 spinnerStyle.textContent = `@keyframes atm-spin { to { transform: rotate(360deg); } }`;
 if (!document.head.querySelector("[data-atm-spin]")) {
@@ -382,6 +379,7 @@ if (!document.head.querySelector("[data-atm-spin]")) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function AdminTaskManagement() {
   const [employees,      setEmployees]      = useState([]);
+  const [activeProjects, setActiveProjects] = useState([]); // from AdminProject system
   const [loading,        setLoading]        = useState(true);
   const [activeTab,      setActiveTab]      = useState("active");
   const [filterDept,     setFilterDept]     = useState("All");
@@ -395,7 +393,8 @@ export default function AdminTaskManagement() {
   const [taskModal,      setTaskModal]      = useState({ open: false, project: null });
   const [editTaskModal,  setEditTaskModal]  = useState({ open: false, task: null });
 
-  const [projectForm, setProjectForm] = useState({ name: "", status: "Not Started", files: [] });
+  // projectForm now uses selectedProjectId instead of a name text field
+  const [projectForm, setProjectForm] = useState({ selectedProjectId: "", files: [] });
   const [taskForm,    setTaskForm]    = useState({ title: "", description: "", status: "Not Started", priority: "medium", dueDate: "", files: [] });
   const [saving,      setSaving]      = useState(false);
 
@@ -407,8 +406,16 @@ export default function AdminTaskManagement() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/tasks`);
-      setEmployees(Array.isArray(res.data) ? res.data : []);
+      // fetch task management employees AND the admin projects list in parallel
+      const [taskRes, projectRes] = await Promise.all([
+        axios.get(`${API}/tasks`),
+        axios.get(`${API}/projects`),
+      ]);
+      setEmployees(Array.isArray(taskRes.data) ? taskRes.data : []);
+      // only show projects that are "In Progress" (need to be worked on now)
+      const inProgress = (Array.isArray(projectRes.data) ? projectRes.data : [])
+        .filter(p => p.status === "In Progress");
+      setActiveProjects(inProgress);
     } catch { showToast("Failed to load data", "error"); }
     finally { setLoading(false); }
   };
@@ -440,21 +447,25 @@ export default function AdminTaskManagement() {
   };
 
   // ── Project actions ────────────────────────────────────────────────────────
-  const handleCreateProject = async () => {
-    if (!projectForm.name.trim()) return showToast("Project name required", "error");
+  const handleAssignProject = async () => {
+    if (!projectForm.selectedProjectId) return showToast("Please select a project", "error");
+    const chosen = activeProjects.find(p => String(p.id) === String(projectForm.selectedProjectId));
+    if (!chosen) return showToast("Project not found", "error");
+
     setSaving(true);
     try {
       const fd = new FormData();
       fd.append("empId",      projectModal.empId);
-      fd.append("name",       projectForm.name.trim());
-      fd.append("status",     projectForm.status);
+      fd.append("name",       chosen.name);
+      fd.append("status",     "In Progress");
       fd.append("assignedBy", "Admin");
+      fd.append("projectRef", chosen.id); // optional: link back to source project
       (projectForm.files || []).forEach(f => fd.append("files", f));
       await axios.post(`${API}/tasks/projects`, fd, { headers: { "Content-Type": "multipart/form-data" } });
       setProjectModal({ open: false, empId: null, empName: "" });
-      showToast("Project assigned!");
+      showToast(`"${chosen.name}" assigned!`);
       await fetchData();
-    } catch { showToast("Failed to create project", "error"); }
+    } catch { showToast("Failed to assign project", "error"); }
     finally { setSaving(false); }
   };
 
@@ -572,27 +583,79 @@ export default function AdminTaskManagement() {
     <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
       <Toast toast={toast} />
 
-      {/* Add Project Modal */}
+      {/* ── Assign Project Modal — now uses a dropdown ── */}
       <Modal open={projectModal.open}
         onClose={() => setProjectModal({ open: false, empId: null, empName: "" })}
         title={`Assign Project — ${projectModal.empName}`}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Project dropdown */}
           <div>
-            <label style={labelStyle}>Project Name *</label>
-            <input value={projectForm.name} onChange={e => setProjectForm(p => ({ ...p, name: e.target.value }))}
-              placeholder="e.g. HPS CRM Module"
-              style={{ ...inputStyle, width: "100%" }}
-              onFocus={e => e.target.style.border = "1px solid #1AABDB"}
-              onBlur={e => e.target.style.border = "1px solid var(--card-border)"}
-              onKeyDown={e => e.key === "Enter" && handleCreateProject()} />
+            <label style={labelStyle}>Select Project *</label>
+            {activeProjects.length === 0 ? (
+              <div style={{
+                padding: "12px 14px", borderRadius: 12, fontSize: 13,
+                background: "rgba(245,158,11,0.08)", color: "#F59E0B",
+                border: "1px solid rgba(245,158,11,0.2)",
+              }}>
+                No "In Progress" projects available. Create and set a project to In Progress in the Projects section first.
+              </div>
+            ) : (
+              <select
+                value={projectForm.selectedProjectId}
+                onChange={e => setProjectForm(p => ({ ...p, selectedProjectId: e.target.value }))}
+                style={{
+                  ...inputStyle, width: "100%",
+                  background: "var(--card-bg)", color: "var(--text-primary)",
+                  border: "1px solid var(--card-border)",
+                }}
+                onFocus={e => e.target.style.border = "1px solid #1AABDB"}
+                onBlur={e => e.target.style.border = "1px solid var(--card-border)"}>
+                <option value="">— Select a project —</option>
+                {activeProjects.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{p.category ? ` · ${p.category}` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            {/* show selected project details */}
+            {projectForm.selectedProjectId && (() => {
+              const proj = activeProjects.find(p => String(p.id) === String(projectForm.selectedProjectId));
+              return proj ? (
+                <div style={{
+                  marginTop: 8, padding: "10px 12px", borderRadius: 10,
+                  background: "rgba(26,171,219,0.06)", border: "1px solid rgba(26,171,219,0.15)",
+                  display: "flex", flexDirection: "column", gap: 4,
+                }}>
+                  {proj.description && (
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
+                      {proj.description}
+                    </p>
+                  )}
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    {proj.endDate && (
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                        📅 Deadline: {new Date(proj.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                      </span>
+                    )}
+                    {proj.priority && (
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "capitalize" }}>
+                        🔺 Priority: {proj.priority}
+                      </span>
+                    )}
+                    {proj.members?.length > 0 && (
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                        👥 {proj.members.length} member{proj.members.length !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
-          <div>
-            <label style={labelStyle}>Initial Status</label>
-            <select value={projectForm.status} onChange={e => setProjectForm(p => ({ ...p, status: e.target.value }))}
-              style={{ ...inputStyle, width: "100%" }}>
-              {PROJECT_STATUSES.map(s => <option key={s}>{s}</option>)}
-            </select>
-          </div>
+
+          {/* File attachment */}
           <div>
             <label style={labelStyle}>
               Attach Documents <span style={{ fontWeight: 400 }}>(optional)</span>
@@ -606,12 +669,14 @@ export default function AdminTaskManagement() {
               </p>
             )}
           </div>
+
           <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
-            <button onClick={handleCreateProject} disabled={saving}
+            <button onClick={handleAssignProject} disabled={saving || activeProjects.length === 0}
               style={{
                 flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 700,
-                color: "#fff", border: "none", cursor: saving ? "not-allowed" : "pointer",
-                background: saving ? "rgba(26,171,219,0.5)" : "#1AABDB",
+                color: "#fff", border: "none",
+                cursor: saving || activeProjects.length === 0 ? "not-allowed" : "pointer",
+                background: saving || activeProjects.length === 0 ? "rgba(26,171,219,0.4)" : "#1AABDB",
               }}>
               {saving ? "Assigning…" : "Assign Project"}
             </button>
@@ -728,6 +793,7 @@ export default function AdminTaskManagement() {
           { label: "Active Projects", value: stats.active,    color: "#F59E0B" },
           { label: "Completed",       value: stats.completed, color: "#10B981" },
           { label: "Total Tasks",     value: stats.tasks,     color: "#8B5CF6" },
+          { label: "In Progress (System)", value: activeProjects.length, color: "#1AABDB" },
         ].map(s => (
           <div key={s.label} style={{
             borderRadius: 16, padding: 20,
@@ -768,7 +834,6 @@ export default function AdminTaskManagement() {
         background: "var(--card-bg)", border: "1px solid var(--card-border)",
       }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
-          {/* Search */}
           <div style={{ flex: 1, minWidth: 200 }}>
             <label style={labelStyle}>Search</label>
             <div style={{ position: "relative" }}>
@@ -796,7 +861,7 @@ export default function AdminTaskManagement() {
             <div key={f.label}>
               <label style={labelStyle}>{f.label}</label>
               <select value={f.value} onChange={e => f.set(e.target.value)}
-                style={inputStyle}
+                style={{ ...inputStyle, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}
                 onFocus={e => e.target.style.border = "1px solid #1AABDB"}
                 onBlur={e => e.target.style.border = "1px solid var(--card-border)"}>
                 {f.opts.map(o => <option key={o}>{o}</option>)}
@@ -846,7 +911,6 @@ export default function AdminTaskManagement() {
               borderRadius: 16, overflow: "hidden",
               background: "var(--card-bg)", border: "1px solid var(--card-border)",
             }}>
-              {/* Employee row */}
               <div style={{
                 display: "flex", alignItems: "center", gap: 16, padding: "16px 20px",
                 cursor: "pointer", transition: "background 0.15s",
@@ -881,7 +945,6 @@ export default function AdminTaskManagement() {
                   </p>
                 </div>
 
-                {/* EOD snippet — visible on wider screens via minWidth check isn't possible purely inline; we keep it visible always */}
                 {emp.dailyWorkStatus && (
                   <p style={{
                     fontSize: 12, fontStyle: "italic", flexShrink: 0,
@@ -892,7 +955,6 @@ export default function AdminTaskManagement() {
                   </p>
                 )}
 
-                {/* Project status pills */}
                 <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                   {shownProjects.slice(0, 3).map(p => (
                     <StatusBadge key={p.id} status={p.status} size="xs" />
@@ -907,11 +969,13 @@ export default function AdminTaskManagement() {
                   )}
                 </div>
 
-                {/* Assign project button */}
                 {activeTab === "active" && (
                   <div onClick={e => e.stopPropagation()}>
                     <button
-                      onClick={() => { setProjectForm({ name: "", status: "Not Started", files: [] }); setProjectModal({ open: true, empId: emp.empId, empName: emp.name }); }}
+                      onClick={() => {
+                        setProjectForm({ selectedProjectId: "", files: [] });
+                        setProjectModal({ open: true, empId: emp.empId, empName: emp.name });
+                      }}
                       style={{
                         padding: "6px 12px", borderRadius: 12, fontSize: 12, fontWeight: 700,
                         flexShrink: 0, cursor: "pointer", transition: "background 0.15s",
@@ -933,7 +997,6 @@ export default function AdminTaskManagement() {
                 </svg>
               </div>
 
-              {/* Expanded projects */}
               {isOpen && (
                 <div style={{
                   padding: "8px 20px 16px",
@@ -949,7 +1012,10 @@ export default function AdminTaskManagement() {
                       </p>
                       {activeTab === "active" && (
                         <button
-                          onClick={() => { setProjectForm({ name: "", status: "Not Started", files: [] }); setProjectModal({ open: true, empId: emp.empId, empName: emp.name }); }}
+                          onClick={() => {
+                            setProjectForm({ selectedProjectId: "", files: [] });
+                            setProjectModal({ open: true, empId: emp.empId, empName: emp.name });
+                          }}
                           style={{
                             marginTop: 8, fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 8,
                             color: "#1AABDB", background: "rgba(26,171,219,0.08)", border: "none", cursor: "pointer",

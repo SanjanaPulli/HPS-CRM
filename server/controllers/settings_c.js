@@ -59,9 +59,9 @@ const updateSettings = async (req, res) => {
     } else {
       settings = await prisma.officeSetting.create({
         data: {
-          checkInTime:   checkInTime   || '09:00',
-          checkOutTime:  checkOutTime  || '18:00',
-          lateAfter:     lateAfter     || '09:15',
+          checkInTime:   checkInTime   || '09:30',
+          checkOutTime:  checkOutTime  || '17:30',
+          lateAfter:     lateAfter     || '10:00',
           halfDayBefore: halfDayBefore || '13:00',
           workingDays:   workingDays   || 'Mon,Tue,Wed,Thu,Fri,Sat',
           officeName:    officeName    || 'HPS Pvt Ltd',

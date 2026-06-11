@@ -3,17 +3,38 @@ import axios from 'axios'
 import BASE_URL from '../config'
 
 const typeConfig = {
-  success: { color: '#10B981', bg: 'rgba(16,185,129,0.1)', icon: '✓' },
-  warning: { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', icon: '⚠' },
-  error:   { color: '#EF4444', bg: 'rgba(239,68,68,0.1)',  icon: '✕' },
-  info:    { color: '#1AABDB', bg: 'rgba(26,171,219,0.1)', icon: 'i' },
+  success: { color: '#10B981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.25)', icon: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  )},
+  warning: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.25)', icon: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  )},
+  error: { color: '#EF4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.25)', icon: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+  )},
+  info: { color: '#1AABDB', bg: 'rgba(26,171,219,0.12)', border: 'rgba(26,171,219,0.25)', icon: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  )},
+}
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const m = Math.floor(diff / 60000)
+  const h = Math.floor(m / 60)
+  const d = Math.floor(h / 24)
+  if (m < 1) return 'Just now'
+  if (m < 60) return `${m}m ago`
+  if (h < 24) return `${h}h ago`
+  if (d < 7) return `${d}d ago`
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
 }
 
 export default function NotificationBell({ empId }) {
   const [notifications, setNotifications] = useState([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const dropdownRef = useRef(null)
+  const btnRef = useRef(null)
+  const dropRef = useRef(null)
 
   useEffect(() => {
     fetchNotifications()
@@ -23,9 +44,10 @@ export default function NotificationBell({ empId }) {
 
   useEffect(() => {
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpen(false)
-      }
+      if (
+        dropRef.current && !dropRef.current.contains(e.target) &&
+        btnRef.current && !btnRef.current.contains(e.target)
+      ) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -36,60 +58,86 @@ export default function NotificationBell({ empId }) {
       const url = empId
         ? `${BASE_URL}/api/notifications/employee/${empId}`
         : `${BASE_URL}/api/notifications/admin`
-
       const res = await axios.get(url)
-
-      if (empId) {
-        setNotifications(res.data.notifications || [])
-      } else {
-        setNotifications(res.data || [])
-      }
+      const raw = empId ? (res.data.notifications || []) : (res.data || [])
+      // Sort newest first
+      setNotifications([...raw].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
     } catch {
       setNotifications([])
     }
   }
 
+  const markAllRead = async () => {
+    const unread = notifications.filter(n => !n.isRead)
+    await Promise.all(unread.map(n => axios.patch(`${BASE_URL}/api/notifications/${n.id}/read`)))
+    fetchNotifications()
+  }
+
   const unreadCount = notifications.filter(n => !n.isRead).length
 
-  return (
-    <div className="relative" ref={dropdownRef}>
+  // Position dropdown relative to bell button
+  const getDropdownStyle = () => {
+    if (!btnRef.current) return {}
+    const rect = btnRef.current.getBoundingClientRect()
+    const isMobile = window.innerWidth < 768
+    if (isMobile) {
+      return {
+        position: 'fixed',
+        top: rect.bottom + 8,
+        left: 8,
+        right: 8,
+        width: 'auto',
+      }
+    }
+    return {
+      position: 'fixed',
+      top: rect.bottom + 8,
+      right: window.innerWidth - rect.right,
+      width: 380,
+    }
+  }
 
+  return (
+    <div style={{ position: 'relative' }}>
       {/* Bell button */}
       <button
+        ref={btnRef}
         onClick={async () => {
           const next = !open
           setOpen(next)
-
-          if (next) {
-            const unread = notifications.filter(n => !n.isRead)
-
-            await Promise.all(
-              unread.map(n =>
-                axios.patch(
-                  `${BASE_URL}/api/notifications/${n.id}/read`
-                )
-              )
-            )
-
-            fetchNotifications()
-          }
+          if (next) await markAllRead()
         }}
-        className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all"
         style={{
+          position: 'relative',
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           background: open ? 'rgba(26,171,219,0.15)' : 'var(--surface2)',
           border: '1px solid var(--card-border)',
-          color: 'var(--text-secondary)'
+          color: open ? '#1AABDB' : 'var(--text-secondary)',
+          cursor: 'pointer',
+          transition: 'all 0.18s',
         }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(26,171,219,0.15)'}
-        onMouseLeave={e => { if (!open) e.currentTarget.style.background = 'var(--surface2)' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,171,219,0.15)'; e.currentTarget.style.color = '#1AABDB' }}
+        onMouseLeave={e => { if (!open) { e.currentTarget.style.background = 'var(--surface2)'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
-            style={{ background: '#EF4444', fontSize: '9px' }}>
+          <span style={{
+            position: 'absolute', top: -4, right: -4,
+            minWidth: 16, height: 16, borderRadius: 999,
+            background: '#EF4444', color: '#fff',
+            fontSize: 9, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0 3px',
+            border: '2px solid var(--bg)',
+          }}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -97,78 +145,121 @@ export default function NotificationBell({ empId }) {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-11 w-80 rounded-2xl shadow-xl z-50 overflow-hidden"
+        <div
+          ref={dropRef}
           style={{
+            ...getDropdownStyle(),
+            zIndex: 9999,
+            borderRadius: 16,
+            overflow: 'hidden',
             background: 'var(--card-bg)',
             border: '1px solid var(--card-border)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
-          }}>
-
+            boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
+          }}
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: 'var(--card-border)' }}>
-            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Notifications</p>
-            {unreadCount > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
-                {unreadCount} new
-              </span>
-            )}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 16px 12px',
+            borderBottom: '1px solid var(--card-border)',
+            background: 'var(--surface2)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Notifications</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {unreadCount > 0 && (
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
+                  background: 'rgba(239,68,68,0.1)', color: '#EF4444',
+                  border: '1px solid rgba(239,68,68,0.2)'
+                }}>
+                  {unreadCount} new
+                </span>
+              )}
+              <button
+                onClick={fetchNotifications}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4, borderRadius: 6 }}
+                title="Refresh"
+                onMouseEnter={e => e.currentTarget.style.color = '#1AABDB'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* List */}
-          <div
-            className="overflow-y-auto"
-            style={{
-              maxHeight: '450px'
-            }}
-          >
-            {loading ? (
-              <div className="px-4 py-6 text-center">
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Loading...</p>
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center">
-                <div className="w-10 h-10 rounded-full mx-auto mb-3 flex items-center justify-center"
-                  style={{ background: 'var(--surface2)' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8"
-                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+            {notifications.length === 0 ? (
+              <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%', margin: '0 auto 12px',
+                  background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                   </svg>
                 </div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No new notifications</p>
+                <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', margin: '0 0 4px' }}>All caught up!</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>No notifications yet</p>
               </div>
             ) : (
               notifications.map((notif, i) => {
                 const cfg = typeConfig[notif.type] || typeConfig.info
+                const isUnread = !notif.isRead
                 return (
-                  <div key={i}
-                    className="flex items-start gap-3 px-4 py-3 border-b transition-colors"
-                    style={{ borderColor: 'var(--card-border)' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}>
+                  <div key={notif.id || i} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    padding: '12px 16px',
+                    borderBottom: i < notifications.length - 1 ? '1px solid var(--card-border)' : 'none',
+                    background: isUnread ? `${cfg.bg}` : 'transparent',
+                    transition: 'background 0.15s',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                  onMouseLeave={e => e.currentTarget.style.background = isUnread ? cfg.bg : 'transparent'}
+                  >
                     {/* Icon */}
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold"
-                      style={{ background: cfg.bg, color: cfg.color }}>
+                    <div style={{
+                      width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: cfg.bg, color: cfg.color,
+                      border: `1px solid ${cfg.border}`,
+                      marginTop: 1,
+                    }}>
                       {cfg.icon}
                     </div>
+
                     {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className="text-xs font-semibold leading-snug"
-                        style={{ color: 'var(--text-primary)' }}
-                      >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{
+                        fontSize: 12, fontWeight: isUnread ? 600 : 500,
+                        color: 'var(--text-primary)', margin: '0 0 3px',
+                        lineHeight: 1.4,
+                      }}>
                         {notif.message}
                       </p>
-
-                      <p
-                        className="text-[11px] mt-1"
-                        style={{ color: 'var(--text-muted)' }}
-                      >
-                        {new Date(notif.createdAt).toLocaleString()}
+                      <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: 0 }}>
+                        {timeAgo(notif.createdAt)}
                       </p>
                     </div>
+
+                    {/* Unread dot */}
+                    {isUnread && (
+                      <div style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: cfg.color, flexShrink: 0, marginTop: 6
+                      }} />
+                    )}
                   </div>
                 )
               })
@@ -176,16 +267,18 @@ export default function NotificationBell({ empId }) {
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-2.5 border-t" style={{ borderColor: 'var(--card-border)' }}>
-            <button
-              onClick={() => { fetchNotifications() }}
-              className="w-full text-xs font-medium py-1.5 rounded-xl transition-colors"
-              style={{ color: '#1AABDB' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(26,171,219,0.08)'}
-              onMouseLeave={e => e.currentTarget.style.background = ''}>
-              Refresh
-            </button>
-          </div>
+          {notifications.length > 0 && (
+            <div style={{
+              padding: '10px 16px',
+              borderTop: '1px solid var(--card-border)',
+              background: 'var(--surface2)',
+              textAlign: 'center',
+            }}>
+              <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: 0 }}>
+                {notifications.length} notification{notifications.length !== 1 ? 's' : ''} · newest first
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -47,7 +47,8 @@ function EmployeeProfile() {
       JsBarcode(barcodeRef.current, employee.barcodeId, {
         format: 'CODE128', width: 1.5, height: 50,
         displayValue: true, fontSize: 11,
-        background: 'transparent', lineColor: '#1AABDB',
+        background: '#FFFFFF',
+        lineColor: '#000000',
       })
     }
   }, [employee])

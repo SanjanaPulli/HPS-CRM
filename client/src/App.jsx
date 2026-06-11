@@ -29,6 +29,8 @@ import EmployeeLayout from './layouts/EmployeeLayout'
 import ScrollToTop from './components/ScrollToTop'
 import RequireAuth from './RequireAuth.jsx'
 import RequireLeader from './RequireLeader.jsx'
+import AdminProject from './pages/AdminProject'
+import TodoEmbed from './pages/TodoEmbed'
 
 function App() {
   return (
@@ -67,6 +69,8 @@ function App() {
           <Route path="activity" element={<Activity />} />
           <Route path="settings" element={<Settings />} />
           <Route path="tasks" element={<AdminTask />} />
+          <Route path="projects" element={<AdminProject />} />
+          <Route path="todo" element={<TodoEmbed />} />
         </Route>
 
         {/* 🔐 EMPLOYEE ROUTES (PROTECTED) */}
@@ -85,6 +89,7 @@ function App() {
           <Route path="scan" element={<TeamScan />} />
           <Route path="settings" element={<Settings />} />
           <Route path="tasks" element={<EmployeeTask />} />
+          <Route path="todo" element={<TodoEmbed />} />
         </Route>
 
       </Routes>

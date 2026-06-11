@@ -41,7 +41,14 @@ const markAttendance = async (req, res) => {
     if (onLeave) return res.status(400).json({ error: 'Employee is on approved leave today' })
 
     const now = new Date()
-    const isLate = now.getHours() > 10 || (now.getHours() === 10 && now.getMinutes() > 15)
+    const hour = now.getHours()
+    const minute = now.getMinutes()
+    const totalMinutes = hour * 60 + minute
+
+    const PRESENT_FROM = 9 * 60 + 30   // 9:30 AM
+    const LATE_AFTER   = 10 * 60        // 10:00 AM
+
+    const isLate = totalMinutes >= LATE_AFTER
     const status = isLate ? 'Late' : 'Present'
 
     const attendance = await prisma.attendance.create({ data: { empId, status } })

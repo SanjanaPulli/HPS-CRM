@@ -29,6 +29,8 @@ model Employee {
   leaveRequest       LeaveRequest[]
   projects           Project[]
   tasks              Task[]
+  ledProjects      Project[]       @relation("ProjectTeamLead")
+  projectMembers   ProjectMember[]
 }
 
 model Attendance {
@@ -103,16 +105,38 @@ model Notification {
 }
 
 model Project {
-  id         Int               @id @default(autoincrement())
-  empId      String
-  name       String
-  status     String            @default("Not Started")
-  assignedBy String
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-  employee   Employee          @relation(fields: [empId], references: [empId], onDelete: Cascade)
-  documents  ProjectDocument[]
-  tasks      Task[]
+  id          Int               @id @default(autoincrement())
+  empId       String            // kept for backward compat with existing projects
+  name        String
+  description String?
+  status      String            @default("Planning")
+  priority    String            @default("medium")
+  startDate   DateTime?
+  endDate     DateTime?
+  progress    Int               @default(0)
+  budget      String?
+  category    String?
+  teamLeadId  String?
+  assignedBy  String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  employee    Employee          @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  teamLead    Employee?         @relation("ProjectTeamLead", fields: [teamLeadId], references: [empId])
+  members     ProjectMember[]
+  documents   ProjectDocument[]
+  tasks       Task[]
+}
+
+model ProjectMember {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  empId     String
+  role      String   @default("member")   // "lead" | "member"
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employee  Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
+
+  @@unique([projectId, empId])
 }
 
 model Task {

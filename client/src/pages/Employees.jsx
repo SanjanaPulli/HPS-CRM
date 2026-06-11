@@ -103,11 +103,11 @@ function Employees() {
       JsBarcode(barcodeRefs.current[emp.empId], emp.barcodeId, {
         format: 'CODE128', width: 1.5, height: 35,
         displayValue: true, fontSize: 10,
-        background: theme === 'dark' ? '#1C2333' : '#F8FAFC',
-        lineColor: theme === 'dark' ? '#E2E8F0' : '#0F172A',
+        background: '#FFFFFF',
+        lineColor: '#000000',
       })
     }
-  }, [expandedId, employees, theme])
+  }, [expandedId, employees])
 
   useEffect(() => {
     if (showForm && formRef.current) {
@@ -268,7 +268,7 @@ function Employees() {
         {/* Dept filter */}
         <div style={selectWrap}>
           <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-            style={{ ...inputStyle, paddingRight: 32, appearance: 'none', cursor: 'pointer' }}>
+            style={{ ...inputStyle, paddingRight: 32, appearance: 'none', cursor: 'pointer', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
             {uniqueDepts.map(d => <option key={d} value={d}>{d === 'All' ? 'All Departments' : d}</option>)}
           </select>
           <span style={chevronOverlay}><ChevronDown /></span>
@@ -277,7 +277,7 @@ function Employees() {
         {/* Sort */}
         <div style={selectWrap}>
           <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-            style={{ ...inputStyle, paddingRight: 32, appearance: 'none', cursor: 'pointer' }}>
+            style={{ ...inputStyle, paddingRight: 32, appearance: 'none', cursor: 'pointer', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
             <option value="name">Sort: Name A–Z</option>
             <option value="dept">Sort: Department</option>
             <option value="joining">Sort: Latest Joining</option>
@@ -357,7 +357,7 @@ function Employees() {
               <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Team Lead</label>
               <div style={selectWrap}>
                 <select value={form.teamLead} onChange={e => setForm({ ...form, teamLead: e.target.value })}
-                  style={{ ...inputStyle, width: '100%', paddingRight: 32, appearance: 'none' }}>
+                  style={{ ...inputStyle, width: '100%', paddingRight: 32, appearance: 'none', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
                   <option value="">— Select team lead —</option>
                   {teamLeads.map(tl => (
                     <option key={tl.empId} value={tl.name}>{tl.name} · {tl.position}</option>
@@ -379,7 +379,7 @@ function Employees() {
               <div style={selectWrap}>
                 <select value={form.department}
                   onChange={e => { setForm({ ...form, department: e.target.value }); if (e.target.value !== 'Other') setCustomDept('') }}
-                  style={{ ...inputStyle, width: '100%', paddingRight: 32, appearance: 'none' }}>
+                  style={{ ...inputStyle, width: '100%', paddingRight: 32, appearance: 'none', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
                   <option value="">Select department</option>
                   {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>

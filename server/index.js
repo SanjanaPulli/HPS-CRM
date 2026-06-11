@@ -33,6 +33,8 @@ app.use('/api/announcements', announcementRoutes)
 app.use('/api/settings',      settingsRouter)
 app.use('/api/activity',      activityRoutes)
 app.use('/api/tasks',         taskRoutes)
+const projectRoutes = require('./routes/project_r')
+app.use('/api/projects', projectRoutes)
 
 app.get('/', (req, res) => res.send('HPS Attendance Server is running!'))
 

@@ -353,7 +353,7 @@ export default function AdminLeave() {
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>Department</p>
               <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-                style={inputStyle}
+                style={{ ...inputStyle, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}
                 onFocus={e => e.target.style.border = '1px solid #1AABDB'}
                 onBlur={e => e.target.style.border = '1px solid var(--card-border)'}>
                 {departments.map(d => <option key={d}>{d}</option>)}
@@ -382,7 +382,7 @@ export default function AdminLeave() {
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>Sort by</p>
               <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                style={inputStyle}
+                style={{ ...inputStyle, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}
                 onFocus={e => e.target.style.border = '1px solid #1AABDB'}
                 onBlur={e => e.target.style.border = '1px solid var(--card-border)'}>
                 {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}

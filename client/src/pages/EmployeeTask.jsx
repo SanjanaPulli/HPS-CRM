@@ -7,14 +7,15 @@ const API = `${BASE_URL}/api`
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const PROJECT_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Completed']
-const TASK_STATUSES    = ['Not Started', 'In Progress', 'On Hold', 'Completed']
+const PROJECT_STATUSES = ['Not Started', 'In Progress', 'Under Review', 'On Hold', 'Completed']
+const TASK_STATUSES    = ['Not Started', 'In Progress', 'Under Review', 'On Hold', 'Completed']
 const PRIORITIES       = ['low', 'medium', 'high']
 
 const STATUS_CFG = {
   'Not Started': { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)', dot: '#94A3B8' },
   'In Progress': { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.25)',  dot: '#F59E0B' },
   'On Hold':     { color: '#EF4444', bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.25)',   dot: '#EF4444' },
+  'Under Review': { color: '#1AABDB', bg: 'rgba(26,171,219,0.12)',  border: 'rgba(26,171,219,0.25)',  dot: '#1AABDB' },
   'Completed':   { color: '#10B981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.25)',  dot: '#10B981' },
 }
 
@@ -24,7 +25,7 @@ const PRIORITY_CFG = {
   high:   { color: '#EF4444', bg: 'rgba(239,68,68,0.1)',    label: 'High'   },
 }
 
-const TL_POSITIONS = ['tech lead', 'innovation manager', 'computer research analyst', 'product designer', 'ui/ux designer']
+const TL_POSITIONS = ['tech lead', 'innovation manager', 'computer research analyst', 'product designer']
 const isTLOrManager = pos => TL_POSITIONS.includes((pos || '').toLowerCase().trim())
 
 // ─── Small reusable pieces ───────────────────────────────────────────────────
