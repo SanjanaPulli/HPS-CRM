@@ -41,8 +41,11 @@ const markAttendance = async (req, res) => {
     if (onLeave) return res.status(400).json({ error: 'Employee is on approved leave today' })
 
     const now = new Date()
-    const hour = now.getHours()
-    const minute = now.getMinutes()
+    const istOffset = 5.5 * 60 * 60 * 1000
+    const ist = new Date(now.getTime() + istOffset)
+
+    const hour = ist.getUTCHours()
+    const minute = ist.getUTCMinutes()
     const totalMinutes = hour * 60 + minute
 
     const PRESENT_FROM = 9 * 60 + 30   // 9:30 AM
