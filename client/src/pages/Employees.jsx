@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import JsBarcode from 'jsbarcode'
 import BASE_URL from '../config'
-const { theme }   = useTheme()
 
 const EMPTY_FORM = {
   empId: '', name: '', position: '', joiningDate: '', endDate: '', email: '',
@@ -10,7 +9,6 @@ const EMPTY_FORM = {
 }
 
 const DEPARTMENTS = ['Engineering', 'HR', 'Sales', 'Marketing', 'Finance', 'IT', 'Operations', 'Other']
-
 
 const STATUS_COLORS = {
   'Not Started': { bg: 'rgba(100,116,139,0.1)', text: '#64748b', dot: '#94a3b8' },
@@ -70,7 +68,6 @@ function Employees() {
   const [isMobile, setIsMobile]         = useState(window.innerWidth < 768)
   const barcodeRefs = useRef({})
   const formRef     = useRef(null)
-  const { theme }   = useTheme()
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
@@ -245,7 +242,6 @@ function Employees() {
 
       {/* Search + Filters */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
-        {/* Search */}
         <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
           <span style={{
             position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
@@ -260,7 +256,6 @@ function Employees() {
             style={{ ...inputStyle, width: '100%', paddingLeft: 36 }} />
         </div>
 
-        {/* Dept filter */}
         <div style={selectWrap}>
           <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
             style={{ ...inputStyle, paddingRight: 32, appearance: 'none', cursor: 'pointer', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
@@ -269,7 +264,6 @@ function Employees() {
           <span style={chevronOverlay}><ChevronDown /></span>
         </div>
 
-        {/* Sort */}
         <div style={selectWrap}>
           <select value={sortBy} onChange={e => setSortBy(e.target.value)}
             style={{ ...inputStyle, paddingRight: 32, appearance: 'none', cursor: 'pointer', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
@@ -302,7 +296,6 @@ function Employees() {
           boxShadow: '0 1px 4px rgba(0,0,0,0.06)', scrollMarginTop: 24,
           background: 'var(--card-bg)', border: '1px solid var(--card-border)',
         }}>
-          {/* Form header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
             <h2 style={{ fontWeight: 700, fontSize: isMobile ? 16 : 18, color: 'var(--text-primary)', margin: 0 }}>
               {editEmployee ? `Editing: ${editEmployee.name}` : 'Add New Employee'}
@@ -364,7 +357,7 @@ function Employees() {
                 <span style={chevronOverlay}><ChevronDown /></span>
               </div>
               {teamLeads.length === 0 && (
-                <p style={{ fontSize: 12, marginTop: 4, color: 'var(--text-muted)' }}>No TL positions found yet</p>
+                <p style={{ fontSize: 12, marginTop: 4, color: 'var(--text-muted)' }}>No team leads assigned yet</p>
               )}
             </div>
 
@@ -387,11 +380,8 @@ function Employees() {
               )}
             </div>
 
-            {/* Submit row — spans full width */}
-            <div style={{
-              gridColumn: '1 / -1',
-              display: 'flex', flexWrap: 'wrap', gap: 12, paddingTop: 8,
-            }}>
+            {/* Submit row */}
+            <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: 12, paddingTop: 8 }}>
               <button type="submit"
                 style={{
                   background: '#1AABDB', color: '#fff', fontSize: 14, fontWeight: 600,
@@ -435,13 +425,10 @@ function Employees() {
       ) : (
         <div style={{ borderRadius: 24, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
 
-          {/* Desktop table header */}
           {!isMobile && (
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr auto',
-              gap: 16, padding: '12px 20px',
-              fontSize: 12, fontWeight: 600,
+              display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr auto',
+              gap: 16, padding: '12px 20px', fontSize: 12, fontWeight: 600,
               background: 'var(--surface2)', borderBottom: '1px solid var(--card-border)', color: 'var(--text-secondary)',
             }}>
               <span>Employee</span><span>Department</span><span>Position</span>
@@ -468,7 +455,6 @@ function Employees() {
                     onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = 'transparent' }}
                     onClick={() => setExpandedId(isExpanded ? null : emp.empId)}>
 
-                    {/* Avatar + name */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                       <div style={{
                         width: 36, height: 36, borderRadius: 10, background: '#1AABDB', flexShrink: 0,
@@ -490,18 +476,16 @@ function Employees() {
                     <span style={{ fontSize: 14, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.position || '—'}</span>
                     <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{formatDate(emp.joiningDate)}</span>
                     <div><StatusPill status={emp.projectStatus} /></div>
-
                     <span style={{
                       color: 'var(--text-muted)', flexShrink: 0,
-                      transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s',
-                      display: 'flex',
+                      transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'flex',
                     }}>
                       <ChevronDown />
                     </span>
                   </div>
                 )}
 
-                {/* Mobile card row */}
+                {/* Mobile row */}
                 {isMobile && (
                   <div
                     style={{
@@ -530,8 +514,7 @@ function Employees() {
                       {emp.projectStatus && <StatusPill status={emp.projectStatus} />}
                       <span style={{
                         color: 'var(--text-muted)',
-                        transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s',
-                        display: 'flex',
+                        transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'flex',
                       }}>
                         <ChevronDown />
                       </span>
@@ -607,48 +590,49 @@ function Employees() {
                         </button>
                       </div>
                     )}
+
                     {/* Team Lead Toggle */}
-                    <div style={{
+                    <div
+                      style={{
                         display: 'flex', alignItems: 'center', gap: 10,
                         padding: '10px 14px', borderRadius: 12, marginBottom: 12,
-                         background: emp.isAttendanceLeader ? 'rgba(26,171,219,0.08)' : 'var(--card-bg)',
-                          border: `1px solid ${emp.isAttendanceLeader ? 'rgba(26,171,219,0.25)' : 'var(--card-border)'}`,
+                        background: emp.isAttendanceLeader ? 'rgba(26,171,219,0.08)' : 'var(--card-bg)',
+                        border: `1px solid ${emp.isAttendanceLeader ? 'rgba(26,171,219,0.25)' : 'var(--card-border)'}`,
                         cursor: 'pointer', transition: 'all 0.2s'
                       }}
-                        onClick={async () => {
-                          try {
-                             await axios.patch(`${BASE_URL}/api/employees/${emp.empId}/leader`, {
-                               isAttendanceLeader: !emp.isAttendanceLeader
-                             })
-                            fetchEmployees()
-                           } catch {
-                               setError('Failed to update team lead status')
-                            }
-                       }
-                     >
+                      onClick={async () => {
+                        try {
+                          await axios.patch(`${BASE_URL}/api/employees/${emp.empId}/leader`, {
+                            isAttendanceLeader: !emp.isAttendanceLeader
+                          })
+                          fetchEmployees()
+                        } catch {
+                          setError('Failed to update team lead status')
+                        }
+                      }}
+                    >
                       <div style={{
                         width: 18, height: 18, borderRadius: 5, flexShrink: 0,
                         border: `2px solid ${emp.isAttendanceLeader ? '#1AABDB' : 'var(--text-muted)'}`,
                         background: emp.isAttendanceLeader ? '#1AABDB' : 'transparent',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transition: 'all 0.2s'
-                     }}>
-                       {emp.isAttendanceLeader && (
-                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      }}>
+                        {emp.isAttendanceLeader && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12"/>
-                         </svg>
+                          </svg>
                         )}
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: emp.isAttendanceLeader ? '#1AABDB' : 'var(--text-primary)' }}>
+                          Set as Team Lead / Attendance Leader
+                        </p>
+                        <p style={{ fontSize: 11, margin: 0, color: 'var(--text-muted)' }}>
+                          {emp.isAttendanceLeader ? 'Currently a team lead — click to remove' : 'Click to assign as team lead'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                     <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: emp.isAttendanceLeader ? '#1AABDB' : 'var(--text-primary)' }}>
-                        Set as Team Lead / Attendance Leader
-                     </p>
-                     <p style={{ fontSize: 11, margin: 0, color: 'var(--text-muted)' }}>
-                           {emp.isAttendanceLeader ? 'Currently a team lead — click to remove' : 'Click to assign as team lead'}
-                     </p>
-                    </div>
-                 </div>
-                    
 
                     {/* Action buttons */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 4 }}>
