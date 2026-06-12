@@ -154,5 +154,15 @@ const updateLeaveStatus = async (req, res) => {
     res.status(500).json({ error: 'Failed to update leave status' })
   }
 }
+const deleteLeave = async (req, res) => {
+  try {
+    await prisma.leaveRequest.delete({
+      where: { id: parseInt(req.params.id) }
+    })
+    res.json({ message: 'Leave request deleted successfully' })
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete leave request' })
+  }
+}
 
-module.exports = { submitLeave, getAllLeaves, getLeaveByEmployee, updateLeaveStatus }
+module.exports = { submitLeave, getAllLeaves, getLeaveByEmployee, updateLeaveStatus, deleteLeave }

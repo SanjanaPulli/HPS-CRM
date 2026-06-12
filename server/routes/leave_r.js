@@ -11,5 +11,6 @@ router.post('/', submitLeave)
 router.get('/', getAllLeaves)
 router.get('/:empId', getLeaveByEmployee)
 router.put('/:id', updateLeaveStatus)
+router.delete('/:id', deleteLeave)
 
 module.exports = router

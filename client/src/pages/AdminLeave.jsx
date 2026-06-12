@@ -139,6 +139,15 @@ export default function AdminLeave() {
     } catch { setError('Failed to update leave status') }
     finally { setUpdating(null) }
   }
+  const deleteLeave = async (id) => {
+  if (!window.confirm('Are you sure you want to delete this leave request?')) return
+  try {
+    await axios.delete(`${BASE_URL}/api/leave/${id}`)
+    fetchLeaves()
+  } catch {
+    setError('Failed to delete leave request')
+  }
+  }
 
   const departments = useMemo(() =>
     ['All', ...new Set(leaves.map(l => l.employee?.department).filter(Boolean))],
@@ -196,6 +205,7 @@ export default function AdminLeave() {
 
   const statPills = [
     { label: 'Pending',       value: pendingCount,         color: '#D97706', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.2)',  onClick: () => setStatusFilter('Pending')  },
+    { label: 'Deleted',       value: leaves.filter(l => l.status === 'Deleted').length, color: '#6B7280', bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.2)', onClick: () => setStatusFilter('Deleted')  },
     { label: 'Approved',      value: approvedCount,        color: '#059669', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)', onClick: () => setStatusFilter('Approved') },
     { label: 'Rejected',      value: rejectedCount,        color: '#DC2626', bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.2)',  onClick: () => setStatusFilter('Rejected') },
     { label: 'Approved Days', value: `${totalDays}d`,      color: '#1AABDB', bg: 'rgba(26,171,219,0.08)', border: 'rgba(26,171,219,0.2)', onClick: () => {}                          },
@@ -514,36 +524,91 @@ export default function AdminLeave() {
                     <td style={{ padding: '12px 16px' }}><StatusBadge status={leave.status} /></td>
 
                     <td style={{ padding: '12px 16px' }}>
-                      {leave.status === 'Pending' ? (
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => updateStatus(leave.id, 'Approved')}
-                            disabled={updating === leave.id}
-                            style={{
-                              background: '#16a34a', color: '#fff', border: 'none',
-                              padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                              cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
-                              opacity: updating === leave.id ? 0.5 : 1, transition: 'background 0.15s',
-                            }}
-                            onMouseEnter={e => { if (updating !== leave.id) e.currentTarget.style.background = '#15803d' }}
-                            onMouseLeave={e => e.currentTarget.style.background = '#16a34a'}>
-                            Approve
-                          </button>
-                          <button onClick={() => updateStatus(leave.id, 'Rejected')}
-                            disabled={updating === leave.id}
-                            style={{
-                              background: '#ef4444', color: '#fff', border: 'none',
-                              padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                              cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
-                              opacity: updating === leave.id ? 0.5 : 1, transition: 'background 0.15s',
-                            }}
-                            onMouseEnter={e => { if (updating !== leave.id) e.currentTarget.style.background = '#dc2626' }}
-                            onMouseLeave={e => e.currentTarget.style.background = '#ef4444'}>
-                            Reject
-                          </button>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
-                      )}
+                    <div
+                      style={{
+                       display: 'flex',
+                       gap: 6,
+                       alignItems: 'center',
+                       flexWrap: 'wrap',
+                      }}
+                    >
+                     {leave.status === 'Pending' ? (
+                      <>
+                         <button
+                           onClick={() => updateStatus(leave.id, 'Approved')}
+                           disabled={updating === leave.id}
+                           style={{
+                             background: '#16a34a',
+                             color: '#fff',
+                             border: 'none',
+                             padding: '4px 10px',
+                             borderRadius: 8,
+                             fontSize: 11,
+                             fontWeight: 600,
+                             cursor: 'pointer',
+                             whiteSpace: 'nowrap',
+                             fontFamily: 'inherit',
+                            opacity: updating === leave.id ? 0.5 : 1,
+                         }}
+        >
+          Approve
+        </button>
+
+        <button
+          onClick={() => updateStatus(leave.id, 'Rejected')}
+          disabled={updating === leave.id}
+          style={{
+            background: '#ef4444',
+            color: '#fff',
+            border: 'none',
+            padding: '4px 10px',
+            borderRadius: 8,
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            fontFamily: 'inherit',
+            opacity: updating === leave.id ? 0.5 : 1,
+          }}
+        >
+          Reject
+        </button>
+      </>
+    ) : (
+      <span
+        style={{
+          fontSize: 12,
+          color: 'var(--text-muted)',
+        }}
+      >
+        —
+      </span>
+    )}
+
+    <button
+      onClick={() => deleteLeave(leave.id)}
+      style={{
+        background: 'rgba(239,68,68,0.1)',
+        color: '#EF4444',
+        border: '1px solid rgba(239,68,68,0.2)',
+        padding: '4px 10px',
+        borderRadius: 8,
+        fontSize: 11,
+        fontWeight: 600,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        fontFamily: 'inherit',
+      }}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.background = 'rgba(239,68,68,0.2)')
+      }
+      onMouseLeave={(e) =>
+        (e.currentTarget.style.background = 'rgba(239,68,68,0.1)')
+      }
+    >
+      Delete
+    </button>
+                    </div>
                     </td>
                   </tr>
                 ))}
