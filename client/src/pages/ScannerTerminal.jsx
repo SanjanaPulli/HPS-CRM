@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import axios from 'axios'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import BASE_URL from '../config'
 
 const STATUS_IDLE     = 'idle'
@@ -21,6 +21,7 @@ export default function ScannerTerminal() {
   const cooldownRef = useRef(false)
   const [searchParams] = useSearchParams()
   const from = searchParams.get('from') // 'admin' | 'employee' | null
+  const navigate = useNavigate()
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -364,47 +365,29 @@ export default function ScannerTerminal() {
 
         {/* Footer */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '24px' }}>
-          {from === 'admin' && (
-            <a
-              href="/admin/dashboard"
-              style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#1AABDB'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
-            >
-              ← Admin Dashboard
-            </a>
-          )}
-          {from === 'employee' && (
-            <a
-              href="/employee/dashboard"
-              style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#1AABDB'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
-            >
-              ← Employee Dashboard
-            </a>
-          )}
-          {!from && (
-            <>
-              <a
-                href="/employee/dashboard"
-                style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', textDecoration: 'none', transition: 'color 0.2s' }}
-                onMouseEnter={e => e.currentTarget.style.color = '#1AABDB'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
-              >
-                ← Employee Portal
-              </a>
-              <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
-              <a
-                href="/login"
-                style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', textDecoration: 'none', transition: 'color 0.2s' }}
-                onMouseEnter={e => e.currentTarget.style.color = '#1AABDB'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
-              >
-                Admin Panel →
-              </a>
-            </>
-          )}
+          {/* Back button */}
+          <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={() => navigate(from === 'admin' ? '/admin/dashboard' : '/employee/dashboard')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 20px', borderRadius: 12,
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#94A3B8', fontSize: '0.875rem', fontWeight: 500,
+              cursor: 'pointer', transition: 'all 0.2s'
+             }}
+             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,171,219,0.1)'; e.currentTarget.style.color = '#1AABDB'; e.currentTarget.style.borderColor = 'rgba(26,171,219,0.3)' }}
+             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+           >
+             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <path d="M19 12H5M12 19l-7-7 7-7"/>
+             </svg>
+             Back to {from === 'admin' ? 'Admin Dashboard' : 'My Dashboard'}
+            </button>
+          </div>
+          
+          
         </div>
         <p style={{ textAlign: 'center', color: '#334155', fontSize: '0.75rem', marginTop: '12px' }}>
           HPS Pvt Ltd · Attendance Terminal · No login required

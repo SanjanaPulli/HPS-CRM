@@ -182,7 +182,39 @@ export default function Dashboard() {
         </div>
         <p style={{ fontSize: 14, margin: "0 0 0 12px", color: "var(--text-secondary)" }}>Welcome back, Admin</p>
       </div>
-
+      {/* Scanner CTA */}
+      <div
+        onClick={() => navigate('/scan?from=admin')}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '20px 24px', borderRadius: 16, marginBottom: 24, cursor: 'pointer',
+          background: 'linear-gradient(135deg, #1AABDB, #0e8ab5)',
+          boxShadow: '0 4px 20px rgba(26,171,219,0.3)',
+          transition: 'transform 0.2s, box-shadow 0.2s'
+        }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(26,171,219,0.4)' }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(26,171,219,0.3)' }}
+      >
+       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{
+           width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.2)',
+           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <path d="M14 14h2v2h-2zM18 14h3M14 18h2M18 18v3M20 14v2"/>
+          </svg>
+        </div>
+        <div>
+          <p style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>Attendance Scanner</p>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: '2px 0 0' }}>Tap to open the barcode scanner terminal</p>
+        </div>
+      </div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+      </div>
       {/* Stat cards — 1 col mobile, 3 col desktop */}
       <div style={{
         display: "grid",
