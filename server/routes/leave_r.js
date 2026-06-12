@@ -4,7 +4,7 @@ const {
   submitLeave,
   getAllLeaves,
   getLeaveByEmployee,
-  updateLeaveStatus
+  updateLeaveStatus, deleteLeave
 } = require('../controllers/leave_c')
 
 router.post('/', submitLeave)
