@@ -11,7 +11,6 @@ const notificationRoutes = require('./routes/notifications_r')
 const announcementRoutes = require('./routes/announcement_r')
 const settingsRouter     = require('./routes/settings_r')
 const activityRoutes     = require('./routes/activity_r')
-const taskRoutes         = require('./routes/task_r')
 const startScheduler     = require('./scheduler')
 const logActivity        = require('./utils/activityLogger')
 
@@ -32,9 +31,6 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/announcements', announcementRoutes)
 app.use('/api/settings',      settingsRouter)
 app.use('/api/activity',      activityRoutes)
-app.use('/api/tasks',         taskRoutes)
-const projectRoutes = require('./routes/project_r')
-app.use('/api/projects', projectRoutes)
 
 app.get('/', (req, res) => res.send('HPS Attendance Server is running!'))
 

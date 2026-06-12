@@ -197,7 +197,7 @@ export default function ScannerTerminal() {
               color: '#EAB308',
               border: '1px solid rgba(234,179,8,0.2)'
             }}>
-              ⚠ After 10:15 AM — will be marked Late
+              ⚠ After 10:00 AM — will be marked Late
             </div>
           )}
         </div>

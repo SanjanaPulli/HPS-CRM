@@ -12,13 +12,13 @@ import Announcements from './pages/Announcements'
 import Reports from './pages/Reports'
 import Activity from './pages/Activity'
 import Settings from './pages/Settings'
-import AdminTask from './pages/AdminTask'
+
 
 import EmployeeDashboard from './pages/EmployeeDashboard'
 import EmployeeLeave from './pages/EmployeeLeave'
 import EmployeeProfile from './pages/EmployeeProfile'
 import EmployeeAttendance from './pages/EmployeeAttendance'
-import EmployeeTask from './pages/EmployeeTask'
+
 
 import TeamScan from './pages/TeamScan'
 import ScannerTerminal from './pages/ScannerTerminal'
@@ -29,7 +29,6 @@ import EmployeeLayout from './layouts/EmployeeLayout'
 import ScrollToTop from './components/ScrollToTop'
 import RequireAuth from './RequireAuth.jsx'
 import RequireLeader from './RequireLeader.jsx'
-import AdminProject from './pages/AdminProject'
 import TodoEmbed from './pages/TodoEmbed'
 
 function App() {
@@ -68,8 +67,6 @@ function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="activity" element={<Activity />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="tasks" element={<AdminTask />} />
-          <Route path="projects" element={<AdminProject />} />
           <Route path="todo" element={<TodoEmbed />} />
         </Route>
 
@@ -88,7 +85,6 @@ function App() {
           <Route path="attendance" element={<EmployeeAttendance />} />
           <Route path="scan" element={<TeamScan />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="tasks" element={<EmployeeTask />} />
           <Route path="todo" element={<TodoEmbed />} />
         </Route>
 

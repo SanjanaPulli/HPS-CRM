@@ -109,13 +109,6 @@ function EmployeeDashboard() {
       ...cardStyles[2],
       action: () => navigate('/employee/attendance'),
     },
-    {
-      icon: '✅', label: 'My Tasks',
-      desc: 'View your project, update status and submit EOD.',
-      btn: 'Open Tasks',
-      ...cardStyles[3],
-      action: () => navigate('/employee/tasks'),
-    },
   ]
 
   const now = new Date()
