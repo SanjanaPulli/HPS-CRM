@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import JsBarcode from 'jsbarcode'
 import BASE_URL from '../config'
-import { useTheme } from '../context/ThemeContext'
+const { theme }   = useTheme()
 
 const EMPTY_FORM = {
   empId: '', name: '', position: '', joiningDate: '', endDate: '', email: '',
@@ -11,11 +11,6 @@ const EMPTY_FORM = {
 
 const DEPARTMENTS = ['Engineering', 'HR', 'Sales', 'Marketing', 'Finance', 'IT', 'Operations', 'Other']
 
-const TL_POSITIONS = [
-  'tech lead', 'innovation manager', 'computer research analyst',
-  'product designer', 'ui/ux designer',
-]
-const isTL = (position) => TL_POSITIONS.includes((position || '').toLowerCase().trim())
 
 const STATUS_COLORS = {
   'Not Started': { bg: 'rgba(100,116,139,0.1)', text: '#64748b', dot: '#94a3b8' },
@@ -115,7 +110,7 @@ function Employees() {
     }
   }, [showForm])
 
-  const teamLeads = employees.filter(e => isTL(e.position))
+  const teamLeads = employees.filter(e => e.isAttendanceLeader === true)
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setError(null)
@@ -612,6 +607,48 @@ function Employees() {
                         </button>
                       </div>
                     )}
+                    {/* Team Lead Toggle */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 14px', borderRadius: 12, marginBottom: 12,
+                         background: emp.isAttendanceLeader ? 'rgba(26,171,219,0.08)' : 'var(--card-bg)',
+                          border: `1px solid ${emp.isAttendanceLeader ? 'rgba(26,171,219,0.25)' : 'var(--card-border)'}`,
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                        onClick={async () => {
+                          try {
+                             await axios.patch(`${BASE_URL}/api/employees/${emp.empId}/leader`, {
+                               isAttendanceLeader: !emp.isAttendanceLeader
+                             })
+                            fetchEmployees()
+                           } catch {
+                               setError('Failed to update team lead status')
+                            }
+                       }
+                     >
+                      <div style={{
+                        width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                        border: `2px solid ${emp.isAttendanceLeader ? '#1AABDB' : 'var(--text-muted)'}`,
+                        background: emp.isAttendanceLeader ? '#1AABDB' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.2s'
+                     }}>
+                       {emp.isAttendanceLeader && (
+                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                         </svg>
+                        )}
+                    </div>
+                    <div>
+                     <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: emp.isAttendanceLeader ? '#1AABDB' : 'var(--text-primary)' }}>
+                        Set as Team Lead / Attendance Leader
+                     </p>
+                     <p style={{ fontSize: 11, margin: 0, color: 'var(--text-muted)' }}>
+                           {emp.isAttendanceLeader ? 'Currently a team lead — click to remove' : 'Click to assign as team lead'}
+                     </p>
+                    </div>
+                 </div>
+                    
 
                     {/* Action buttons */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 4 }}>
