@@ -120,6 +120,7 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     localStorage.removeItem("adminAuth")
+    localStorage.removeItem("adminName")
     navigate("/")
   }
 
@@ -348,7 +349,9 @@ export default function AdminLayout() {
                 </button>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <NotificationBell />
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#1AABDB", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14 }}>A</div>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#1AABDB", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14 }}>
+  {(localStorage.getItem("adminName") || "A")[0].toUpperCase()}
+</div>
                 </div>
               </div>
             ) : (
@@ -359,8 +362,12 @@ export default function AdminLayout() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <NotificationBell />
-                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>Admin</span>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#1AABDB", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14 }}>A</div>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
+                              {localStorage.getItem("adminName") || "Admin"}
+                  </span>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#1AABDB", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14 }}>
+                      {(localStorage.getItem("adminName") || "A")[0].toUpperCase()}
+                </div>
                 </div>
               </div>
             )}
