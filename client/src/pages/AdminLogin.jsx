@@ -21,10 +21,10 @@ export default function AdminLogin() {
       });
       const data = await res.json();
       if (res.ok) {
-  localStorage.setItem("adminAuth", "true");
-  localStorage.setItem("adminName", data.name || "Admin");
-  navigate("/admin/dashboard");
-}
+          localStorage.setItem("adminAuth", "true");
+          localStorage.setItem("adminName", data.name || "Admin");
+         navigate("/admin/dashboard");
+    }
       else {
         setError(data.message || "Invalid credentials");
       }
