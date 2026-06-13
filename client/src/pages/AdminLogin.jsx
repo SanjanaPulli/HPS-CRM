@@ -22,7 +22,7 @@ export default function AdminLogin() {
       const data = await res.json();
       if (res.ok) {
           localStorage.setItem("adminAuth", "true");
-          localStorage.setItem("adminName", data.name || "Admin");
+          localStorage.setItem("adminName", form.username);
          navigate("/admin/dashboard");
     }
       else {
