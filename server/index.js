@@ -34,25 +34,36 @@ app.use('/api/activity',      activityRoutes)
 
 app.get('/', (req, res) => res.send('HPS Attendance Server is running!'))
 
-// ── In-memory admin credentials ───────────────────────────────────────────────
-let adminCredentials = {
-  username: process.env.ADMIN_USERNAME || 'admin',
-  password: process.env.ADMIN_PASSWORD || 'admin123'
-}
+// ── In-memory admin accounts ───────────────────────────────────────────────
+const adminAccounts = [
+  {
+    username: process.env.ADMIN_USERNAME || 'admin',
+    password: process.env.ADMIN_PASSWORD || 'admin123',
+    name: 'Admin'
+  },
+  {
+    username: 'manager',
+    password: 'manager123',
+    name: 'Manager'
+  }
+]
 
 // POST /api/admin/login
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body
-  if (username === adminCredentials.username && password === adminCredentials.password) {
+  const user = adminAccounts.find(
+    a => a.username === username && a.password === password
+  )
+  if (user) {
     await logActivity({
-      empId: null, employeeName: 'Admin',
+      empId: null, employeeName: user.name,
       action: 'Admin Login', category: 'AUTH',
-      details: `Admin "${username}" logged into the portal`
+      details: `"${user.name}" logged into the admin portal`
     })
-    res.json({ message: 'Login successful' })
+    res.json({ message: 'Login successful', name: user.name })
   } else {
     await logActivity({
-      empId: null, employeeName: 'Admin',
+      empId: null, employeeName: 'Unknown',
       action: 'Admin Login Failed', category: 'AUTH',
       details: `Failed login attempt for username "${username}"`
     })
@@ -62,16 +73,18 @@ app.post('/api/admin/login', async (req, res) => {
 
 // PATCH /api/admin/password
 app.patch('/api/admin/password', async (req, res) => {
-  const { currentPassword, newPassword } = req.body
-  if (currentPassword !== adminCredentials.password)
+  const { currentPassword, newPassword, username } = req.body
+  const user = adminAccounts.find(a => a.username === (username || 'admin'))
+  if (!user) return res.status(404).json({ error: 'Account not found' })
+  if (currentPassword !== user.password)
     return res.status(401).json({ error: 'Current password is incorrect' })
   if (!newPassword || newPassword.length < 6)
     return res.status(400).json({ error: 'New password must be at least 6 characters' })
-  adminCredentials.password = newPassword
+  user.password = newPassword
   await logActivity({
-    empId: null, employeeName: 'Admin',
+    empId: null, employeeName: user.name,
     action: 'Admin Password Changed', category: 'AUTH',
-    details: 'Admin account password updated'
+    details: `${user.name} account password updated`
   })
   res.json({ message: 'Password updated' })
 })
