@@ -175,7 +175,9 @@ export default function Dashboard() {
           <div style={{ width: 4, height: 24, borderRadius: 999, background: "#1AABDB", flexShrink: 0 }} />
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>Dashboard</h1>
         </div>
-        <p style={{ fontSize: 14, margin: "0 0 0 12px", color: "var(--text-secondary)" }}>Welcome back, Admin</p>
+        <p style={{ fontSize: 14, margin: "0 0 0 12px", color: "var(--text-secondary)" }}>
+              Welcome back, {localStorage.getItem("adminName") || "Admin"}
+        </p>
       </div>
       {/* Scanner CTA */}
       <div
