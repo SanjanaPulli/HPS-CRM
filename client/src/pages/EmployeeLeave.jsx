@@ -11,21 +11,47 @@ const LeaveIcon = () => (
     <line x1="9" y1="17" x2="12" y2="17"/>
   </svg>
 )
-
 const WFHIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
     <polyline points="9 22 9 12 15 12 15 22"/>
   </svg>
 )
+const PermissionIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+)
+const OnDutyIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="7" width="20" height="14" rx="2"/>
+    <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
+    <line x1="12" y1="12" x2="12" y2="16"/>
+    <line x1="10" y1="14" x2="14" y2="14"/>
+  </svg>
+)
+
+const TYPE_CONFIG = {
+  Leave:      { label: 'Leave',      color: '#64748B', bg: 'rgba(100,116,139,0.1)', border: 'rgba(100,116,139,0.2)' },
+  WFH:        { label: 'WFH',        color: '#1AABDB', bg: 'rgba(26,171,219,0.1)',  border: 'rgba(26,171,219,0.2)'  },
+  Permission: { label: 'Permission', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.2)'  },
+  'On Duty':  { label: 'On Duty',    color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)',  border: 'rgba(139,92,246,0.2)'  },
+}
+
+// Resolve type for old records that might have null/undefined type
+// If a record has no type but has fromTime/toTime it's Permission;
+// otherwise fall back to 'Leave'
+function resolveType(leave) {
+  if (leave.type && TYPE_CONFIG[leave.type]) return leave.type
+  if (leave.fromTime || leave.toTime) return 'Permission'
+  return 'Leave'
+}
 
 function getDayCount(from, to, isHalfDay) {
   if (isHalfDay) return 0.5
   if (!from || !to) return 1
-  const d1 = new Date(from)
-  const d2 = new Date(to)
-  if (d2 < d1) return 1
-  const days = Math.floor((d2 - d1) / (1000 * 60 * 60 * 24)) + 1
+  const days = Math.floor((new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24)) + 1
   return days > 0 ? days : 1
 }
 
@@ -34,9 +60,15 @@ function formatDateIN(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function buildReason(reason, isHalfDay, halfDaySession) {
-  if (isHalfDay) return `${reason} (Half Day — ${halfDaySession} Session)`
-  return reason
+function calcHours(fromTime, toTime) {
+  if (!fromTime || !toTime) return null
+  const [fh, fm] = fromTime.split(':').map(Number)
+  const [th, tm] = toTime.split(':').map(Number)
+  const mins = (th * 60 + tm) - (fh * 60 + fm)
+  if (mins <= 0) return null
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
 function EmployeeLeave() {
@@ -54,11 +86,9 @@ function EmployeeLeave() {
   const today = new Date().toISOString().split('T')[0]
 
   const [form, setForm] = useState({
-    fromDate: '',
-    toDate: '',
-    reason: '',
-    isHalfDay: false,
-    halfDaySession: 'Morning',
+    fromDate: '', toDate: '', reason: '',
+    isHalfDay: false, halfDaySession: 'Morning',
+    fromTime: '', toTime: '',
   })
 
   useEffect(() => {
@@ -78,14 +108,18 @@ function EmployeeLeave() {
     }
   }, [form.isHalfDay, form.fromDate])
 
+  useEffect(() => {
+    setForm({ fromDate: '', toDate: '', reason: '', isHalfDay: false, halfDaySession: 'Morning', fromTime: '', toTime: '' })
+    setError('')
+    setSuccess('')
+  }, [requestType])
+
   const fetchMyLeaves = async (empId) => {
     try {
       const res = await axios.get(`${BASE_URL}/api/leave/${empId}`)
-      const sorted = [...res.data].sort((a, b) => {
-        const da = new Date(a.fromDate || a.date || 0)
-        const db = new Date(b.fromDate || b.date || 0)
-        return db - da
-      })
+      const sorted = [...res.data].sort((a, b) =>
+        new Date(b.fromDate || b.date || 0) - new Date(a.fromDate || a.date || 0)
+      )
       setMyLeaves(sorted)
     } catch {
       setError('Failed to fetch leave history')
@@ -94,33 +128,45 @@ function EmployeeLeave() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
-    if (!form.fromDate) return setError('Please select a start date')
-    if (!form.toDate)   return setError('Please select an end date')
-    if (new Date(form.toDate) < new Date(form.fromDate))
-      return setError('End date cannot be before start date')
-    if (!form.reason.trim()) return setError('Please enter a reason')
+    setError(''); setSuccess('')
+
+    if (requestType === 'Permission') {
+      if (!form.fromDate)  return setError('Please select a date')
+      if (!form.fromTime)  return setError('Please enter from time')
+      if (!form.toTime)    return setError('Please enter to time')
+      if (form.toTime <= form.fromTime) return setError('To time must be after from time')
+      if (!form.reason.trim()) return setError('Please enter a reason')
+    } else {
+      if (!form.fromDate)  return setError('Please select a start date')
+      if (!form.toDate)    return setError('Please select an end date')
+      if (new Date(form.toDate) < new Date(form.fromDate))
+        return setError('End date cannot be before start date')
+      if (!form.reason.trim()) return setError('Please enter a reason')
+    }
 
     setSubmitting(true)
     try {
-      const fullReason = buildReason(form.reason, form.isHalfDay, form.halfDaySession)
-      const days = getDayCount(form.fromDate, form.toDate, form.isHalfDay)
-
       await axios.post(`${BASE_URL}/api/leave`, {
         empId:          employee.empId,
         date:           form.fromDate,
         fromDate:       form.fromDate,
-        toDate:         form.toDate,
+        toDate:         requestType === 'Permission' ? form.fromDate : form.toDate,
         isHalfDay:      form.isHalfDay,
         halfDaySession: form.isHalfDay ? form.halfDaySession : null,
-        reason:         fullReason,
+        reason:         form.reason,
         type:           requestType,
+        fromTime:       (requestType === 'Permission' || requestType === 'On Duty') ? form.fromTime || null : null,
+        toTime:         (requestType === 'Permission' || requestType === 'On Duty') ? form.toTime   || null : null,
       })
 
-      const dayLabel = form.isHalfDay ? '0.5 day' : `${days} day${days !== 1 ? 's' : ''}`
-      setSuccess(`${requestType} request for ${dayLabel} submitted! Waiting for admin approval.`)
-      setForm({ fromDate: '', toDate: '', reason: '', isHalfDay: false, halfDaySession: 'Morning' })
+      const label = requestType === 'Permission'
+        ? `permission (${form.fromTime}–${form.toTime})`
+        : requestType === 'On Duty'
+          ? (form.fromTime && form.toTime ? `on duty (${form.fromTime}–${form.toTime})` : 'on duty')
+          : form.isHalfDay ? '0.5 day' : `${getDayCount(form.fromDate, form.toDate, false)} day(s)`
+
+      setSuccess(`${requestType} request for ${label} submitted! Waiting for admin approval.`)
+      setForm({ fromDate: '', toDate: '', reason: '', isHalfDay: false, halfDaySession: 'Morning', fromTime: '', toTime: '' })
       fetchMyLeaves(employee.empId)
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit request')
@@ -131,28 +177,34 @@ function EmployeeLeave() {
 
   const statusStyle = (status) => {
     if (status === 'Approved') return { background: 'rgba(16,185,129,0.1)',  color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }
-    if (status === 'Rejected') return { background: 'rgba(239,68,68,0.1)',   color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }
+    if (status === 'Rejected') return { background: 'rgba(239,68,68,0.1)',   color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)'  }
     return { background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }
   }
 
+  // Counts using resolved type so WFH isn't double-counted as Leave
   const pending  = myLeaves.filter(l => l.status === 'Pending').length
   const approved = myLeaves.filter(l => l.status === 'Approved').length
   const rejected = myLeaves.filter(l => l.status === 'Rejected').length
 
-  const previewDays = getDayCount(form.fromDate, form.toDate, form.isHalfDay)
+  const previewDays  = getDayCount(form.fromDate, form.toDate, form.isHalfDay)
+  const previewHours = calcHours(form.fromTime, form.toTime)
 
   const inputStyle = {
-    width: '100%',
-    padding: '12px 16px',
-    borderRadius: 12,
-    fontSize: 14,
-    outline: 'none',
-    boxSizing: 'border-box',
+    width: '100%', padding: '12px 16px', borderRadius: 12,
+    fontSize: 14, outline: 'none', boxSizing: 'border-box',
     transition: 'border 0.2s',
     background: 'var(--surface2, rgba(255,255,255,0.04))',
-    border: '1px solid var(--card-border)',
-    color: 'var(--text-primary)',
+    border: '1px solid var(--card-border)', color: 'var(--text-primary)',
   }
+
+  const isPermission = requestType === 'Permission'
+  const isOnDuty     = requestType === 'On Duty'
+  const tabItems = [
+    { key: 'Leave',      label: 'Leave',           icon: <LeaveIcon />      },
+    { key: 'WFH',        label: 'Work from Home',  icon: <WFHIcon />        },
+    { key: 'Permission', label: 'Permission',      icon: <PermissionIcon /> },
+    { key: 'On Duty',    label: 'On Duty',         icon: <OnDutyIcon />     },
+  ]
 
   return (
     <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
@@ -164,31 +216,29 @@ function EmployeeLeave() {
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Leave Portal</h1>
         </div>
         <p style={{ fontSize: 14, margin: '0 0 0 12px', color: 'var(--text-secondary)' }}>
-          Apply for leave or WFH and track approval status
+          Apply for leave, WFH, permission or on duty and track approval status
         </p>
       </div>
 
       {/* Type toggle */}
       <div style={{
-        display: 'inline-flex', borderRadius: 12, padding: 4, marginBottom: 24,
-        background: 'var(--card-bg)', border: '1px solid var(--card-border)'
+        display: 'flex', flexWrap: 'wrap', gap: 4,
+        borderRadius: 12, padding: 4, marginBottom: 24,
+        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+        width: 'fit-content'
       }}>
-        {[
-          { key: 'Leave', icon: <LeaveIcon /> },
-          { key: 'WFH',   icon: <WFHIcon /> },
-        ].map(({ key, icon }) => (
+        {tabItems.map(({ key, label, icon }) => (
           <button key={key} type="button" onClick={() => setRequestType(key)}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px 20px', borderRadius: 8,
-              fontSize: 14, fontWeight: 600,
+              padding: '8px 16px', borderRadius: 8,
+              fontSize: 13, fontWeight: 600,
               transition: 'all 0.2s', border: 'none', cursor: 'pointer',
               ...(requestType === key
                 ? { background: '#1AABDB', color: '#fff', boxShadow: '0 2px 8px rgba(26,171,219,0.3)' }
                 : { color: 'var(--text-secondary)', background: 'transparent' })
             }}>
-            {icon}
-            {key === 'WFH' ? 'Work from Home' : 'Leave Request'}
+            {icon}{label}
           </button>
         ))}
       </div>
@@ -199,12 +249,10 @@ function EmployeeLeave() {
         background: 'var(--card-bg)', border: '1px solid var(--card-border)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.06)'
       }}>
-
-        {/* Form header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 4px', color: 'var(--text-primary)' }}>
-              Apply for {requestType === 'WFH' ? 'Work from Home' : 'Leave'}
+              Apply for {requestType === 'WFH' ? 'Work from Home' : requestType}
             </h2>
             <p style={{ fontSize: 12, margin: 0, color: 'var(--text-secondary)' }}>
               Submitting as{' '}
@@ -217,120 +265,220 @@ function EmployeeLeave() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'rgba(26,171,219,0.1)', color: '#1AABDB', flexShrink: 0
           }}>
-            {requestType === 'WFH' ? <WFHIcon /> : <LeaveIcon />}
+            {tabItems.find(t => t.key === requestType)?.icon}
           </div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-          {/* Date row */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-            gap: 20
-          }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
-                From Date
-              </label>
-              <input type="date" required min={today}
-                value={form.fromDate}
-                onChange={e => setForm(p => ({
-                  ...p,
-                  fromDate: e.target.value,
-                  toDate: p.isHalfDay ? e.target.value : (p.toDate < e.target.value ? e.target.value : p.toDate)
-                }))}
-                style={inputStyle}
-                onFocus={e => e.target.style.border = '1px solid #1AABDB'}
-                onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
-                To Date{' '}
-                {form.isHalfDay && <span style={{ color: '#1AABDB' }}>(same as from — half day)</span>}
-              </label>
-              <input type="date" required
-                min={form.fromDate || today}
-                value={form.toDate}
-                disabled={form.isHalfDay}
-                onChange={e => setForm(p => ({ ...p, toDate: e.target.value }))}
-                style={{ ...inputStyle, opacity: form.isHalfDay ? 0.5 : 1, cursor: form.isHalfDay ? 'not-allowed' : 'auto' }}
-                onFocus={e => { if (!form.isHalfDay) e.target.style.border = '1px solid #1AABDB' }}
-                onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
-              />
-            </div>
-          </div>
-
-          {/* Day count pill */}
-          {form.fromDate && form.toDate && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '6px 12px', borderRadius: 9999,
-              fontSize: 12, fontWeight: 600,
-              background: 'rgba(26,171,219,0.1)', color: '#1AABDB',
-              border: '1px solid rgba(26,171,219,0.2)', alignSelf: 'flex-start'
-            }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-              {previewDays} day{previewDays !== 1 ? 's' : ''} selected
-            </div>
-          )}
-
-          {/* Half day toggle */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 16px', borderRadius: 12,
-            background: 'var(--surface2, rgba(0,0,0,0.03))', border: '1px solid var(--card-border)'
-          }}>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 2px', color: 'var(--text-primary)' }}>Half Day</p>
-              <p style={{ fontSize: 12, margin: 0, color: 'var(--text-secondary)' }}>
-                Only need {requestType === 'WFH' ? 'WFH for' : 'leave for'} half the day?
-              </p>
-            </div>
-            <button type="button"
-              onClick={() => setForm(p => ({ ...p, isHalfDay: !p.isHalfDay }))}
-              style={{
-                position: 'relative', display: 'inline-flex',
-                height: 24, width: 44, alignItems: 'center', borderRadius: 9999,
-                transition: 'background 0.2s', flexShrink: 0, border: 'none', cursor: 'pointer',
-                background: form.isHalfDay ? '#1AABDB' : 'var(--card-border)'
-              }}>
-              <span style={{
-                display: 'inline-block', height: 16, width: 16, borderRadius: 9999,
-                background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                transition: 'transform 0.2s',
-                transform: form.isHalfDay ? 'translateX(22px)' : 'translateX(4px)'
-              }} />
-            </button>
-          </div>
-
-          {/* Half day session picker */}
-          {form.isHalfDay && (
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
-                Which session?
-              </label>
-              <div style={{ display: 'flex', gap: 12 }}>
-                {['Morning', 'Afternoon'].map(session => (
-                  <button key={session} type="button"
-                    onClick={() => setForm(p => ({ ...p, halfDaySession: session }))}
-                    style={{
-                      flex: 1, padding: '12px', borderRadius: 12,
-                      fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
-                      ...(form.halfDaySession === session
-                        ? { background: 'rgba(26,171,219,0.1)', color: '#1AABDB', border: '2px solid #1AABDB' }
-                        : { background: 'transparent', color: 'var(--text-secondary)', border: '2px solid var(--card-border)' })
-                    }}>
-                    {session === 'Morning' ? '🌅 Morning' : '🌇 Afternoon'}
-                  </button>
-                ))}
+          {/* Permission: date + time fields */}
+          {isPermission ? (
+            <>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                  Date
+                </label>
+                <input type="date" required min={today}
+                  value={form.fromDate}
+                  onChange={e => setForm(p => ({ ...p, fromDate: e.target.value }))}
+                  style={inputStyle}
+                  onFocus={e => e.target.style.border = '1px solid #1AABDB'}
+                  onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
+                />
               </div>
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                    From Time
+                  </label>
+                  <input type="time" required
+                    value={form.fromTime}
+                    onChange={e => setForm(p => ({ ...p, fromTime: e.target.value }))}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.border = '1px solid #1AABDB'}
+                    onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                    To Time
+                  </label>
+                  <input type="time" required
+                    value={form.toTime}
+                    onChange={e => setForm(p => ({ ...p, toTime: e.target.value }))}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.border = '1px solid #1AABDB'}
+                    onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
+                  />
+                </div>
+              </div>
+              {previewHours && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '6px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
+                  background: 'rgba(245,158,11,0.1)', color: '#D97706',
+                  border: '1px solid rgba(245,158,11,0.2)', alignSelf: 'flex-start'
+                }}>
+                  ⏱ {previewHours} permission
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 20 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                    From Date
+                  </label>
+                  <input type="date" required min={today}
+                    value={form.fromDate}
+                    onChange={e => setForm(p => ({
+                      ...p, fromDate: e.target.value,
+                      toDate: p.isHalfDay ? e.target.value : (p.toDate < e.target.value ? e.target.value : p.toDate)
+                    }))}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.border = '1px solid #1AABDB'}
+                    onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                    To Date{form.isHalfDay && <span style={{ color: '#1AABDB' }}> (same as from — half day)</span>}
+                  </label>
+                  <input type="date" required
+                    min={form.fromDate || today}
+                    value={form.toDate}
+                    disabled={form.isHalfDay}
+                    onChange={e => setForm(p => ({ ...p, toDate: e.target.value }))}
+                    style={{ ...inputStyle, opacity: form.isHalfDay ? 0.5 : 1, cursor: form.isHalfDay ? 'not-allowed' : 'auto' }}
+                    onFocus={e => { if (!form.isHalfDay) e.target.style.border = '1px solid #1AABDB' }}
+                    onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
+                  />
+                </div>
+              </div>
+
+              {form.fromDate && form.toDate && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '6px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
+                  background: 'rgba(26,171,219,0.1)', color: '#1AABDB',
+                  border: '1px solid rgba(26,171,219,0.2)', alignSelf: 'flex-start'
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  {previewDays} day{previewDays !== 1 ? 's' : ''} selected
+                </div>
+              )}
+
+              {/* Optional time fields for On Duty */}
+              {isOnDuty && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      Time Range
+                    </label>
+                    <span style={{
+                      fontSize: 11, padding: '2px 8px', borderRadius: 9999,
+                      background: 'rgba(139,92,246,0.1)', color: '#8B5CF6',
+                      fontWeight: 600,
+                    }}>Optional</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
+                        From Time
+                      </label>
+                      <input type="time"
+                        value={form.fromTime}
+                        onChange={e => setForm(p => ({ ...p, fromTime: e.target.value }))}
+                        style={inputStyle}
+                        onFocus={e => e.target.style.border = '1px solid #8B5CF6'}
+                        onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
+                        To Time
+                      </label>
+                      <input type="time"
+                        value={form.toTime}
+                        onChange={e => setForm(p => ({ ...p, toTime: e.target.value }))}
+                        style={inputStyle}
+                        onFocus={e => e.target.style.border = '1px solid #8B5CF6'}
+                        onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
+                      />
+                    </div>
+                  </div>
+                  {previewHours && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 10,
+                      padding: '6px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
+                      background: 'rgba(139,92,246,0.1)', color: '#8B5CF6',
+                      border: '1px solid rgba(139,92,246,0.2)',
+                    }}>
+                      ⏱ {previewHours} on duty
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Half day toggle — only for Leave & WFH */}
+              {(requestType === 'Leave' || requestType === 'WFH') && (
+                <>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 16px', borderRadius: 12,
+                    background: 'var(--surface2, rgba(0,0,0,0.03))', border: '1px solid var(--card-border)'
+                  }}>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 2px', color: 'var(--text-primary)' }}>Half Day</p>
+                      <p style={{ fontSize: 12, margin: 0, color: 'var(--text-secondary)' }}>
+                        Only need {requestType === 'WFH' ? 'WFH for' : 'leave for'} half the day?
+                      </p>
+                    </div>
+                    <button type="button"
+                      onClick={() => setForm(p => ({ ...p, isHalfDay: !p.isHalfDay }))}
+                      style={{
+                        position: 'relative', display: 'inline-flex',
+                        height: 24, width: 44, alignItems: 'center', borderRadius: 9999,
+                        transition: 'background 0.2s', flexShrink: 0, border: 'none', cursor: 'pointer',
+                        background: form.isHalfDay ? '#1AABDB' : 'var(--card-border)'
+                      }}>
+                      <span style={{
+                        display: 'inline-block', height: 16, width: 16, borderRadius: 9999,
+                        background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                        transition: 'transform 0.2s',
+                        transform: form.isHalfDay ? 'translateX(22px)' : 'translateX(4px)'
+                      }} />
+                    </button>
+                  </div>
+                  {form.isHalfDay && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                        Which session?
+                      </label>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        {['Morning', 'Afternoon'].map(session => (
+                          <button key={session} type="button"
+                            onClick={() => setForm(p => ({ ...p, halfDaySession: session }))}
+                            style={{
+                              flex: 1, padding: '12px', borderRadius: 12,
+                              fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                              ...(form.halfDaySession === session
+                                ? { background: 'rgba(26,171,219,0.1)', color: '#1AABDB', border: '2px solid #1AABDB' }
+                                : { background: 'transparent', color: 'var(--text-secondary)', border: '2px solid var(--card-border)' })
+                            }}>
+                            {session === 'Morning' ? '🌅 Morning' : '🌇 Afternoon'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
           )}
 
           {/* Reason */}
@@ -339,9 +487,12 @@ function EmployeeLeave() {
               Reason
             </label>
             <input type="text" required
-              placeholder={requestType === 'WFH'
-                ? 'e.g. Internet issues, Health concerns, Travel'
-                : 'e.g. Sick, Personal, Family event'}
+              placeholder={
+                requestType === 'WFH'        ? 'e.g. Internet issues, Health concerns, Travel' :
+                requestType === 'Permission'  ? 'e.g. Bank work, Doctor appointment' :
+                requestType === 'On Duty'     ? 'e.g. Client visit, Site inspection, Off-site meeting' :
+                'e.g. Sick, Personal, Family event'
+              }
               value={form.reason}
               onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
               style={inputStyle}
@@ -363,7 +514,7 @@ function EmployeeLeave() {
               }}
               onMouseEnter={e => { if (!submitting) e.currentTarget.style.background = '#0e8ab5' }}
               onMouseLeave={e => { if (!submitting) e.currentTarget.style.background = '#1AABDB' }}>
-              {submitting ? 'Submitting…' : `Submit ${requestType === 'WFH' ? 'WFH' : 'Leave'} Request`}
+              {submitting ? 'Submitting…' : `Submit ${requestType} Request`}
             </button>
           </div>
         </form>
@@ -396,17 +547,15 @@ function EmployeeLeave() {
 
       {/* History table */}
       <div style={{ borderRadius: 16, overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-
-        {/* Table header row */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 24px', borderBottom: '1px solid var(--card-border)'
         }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>My Leave History</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>My Request History</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, fontWeight: 500 }}>
-            {pending  > 0 && <span style={{ padding: '4px 10px', borderRadius: 9999, background: 'rgba(245,158,11,0.1)', color: '#F59E0B' }}>{pending} Pending</span>}
+            {pending  > 0 && <span style={{ padding: '4px 10px', borderRadius: 9999, background: 'rgba(245,158,11,0.1)',  color: '#F59E0B' }}>{pending} Pending</span>}
             {approved > 0 && <span style={{ padding: '4px 10px', borderRadius: 9999, background: 'rgba(16,185,129,0.1)', color: '#10B981' }}>{approved} Approved</span>}
-            {rejected > 0 && <span style={{ padding: '4px 10px', borderRadius: 9999, background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>{rejected} Rejected</span>}
+            {rejected > 0 && <span style={{ padding: '4px 10px', borderRadius: 9999, background: 'rgba(239,68,68,0.1)',  color: '#EF4444' }}>{rejected} Rejected</span>}
           </div>
         </div>
 
@@ -422,14 +571,14 @@ function EmployeeLeave() {
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
             </div>
-            <p style={{ fontSize: 14, margin: 0, color: 'var(--text-secondary)' }}>No leave requests yet</p>
+            <p style={{ fontSize: 14, margin: 0, color: 'var(--text-secondary)' }}>No requests yet</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                  {['From', 'To', 'Days', 'Type', 'Reason', 'Status'].map(h => (
+                  {['Date / Time', 'Type', 'Reason', 'Status'].map(h => (
                     <th key={h} style={{
                       textAlign: 'left', fontSize: 12, fontWeight: 600,
                       padding: '12px 24px', color: 'var(--text-secondary)'
@@ -439,9 +588,15 @@ function EmployeeLeave() {
               </thead>
               <tbody>
                 {myLeaves.map(leave => {
-                  const fromDate = leave.fromDate || leave.date
-                  const toDate   = leave.toDate   || leave.date
-                  const days = getDayCount(fromDate, toDate, leave.isHalfDay)
+                  const type = resolveType(leave)          // ← fixed: WFH no longer falls back to Leave
+                  const cfg  = TYPE_CONFIG[type]
+                  const fromDate     = leave.fromDate || leave.date
+                  const toDate       = leave.toDate   || leave.date
+                  const isPermRecord    = type === 'Permission'
+                  const isOnDutyRecord = type === 'On Duty'
+                  const hasTime = (isPermRecord || isOnDutyRecord) && leave.fromTime && leave.toTime
+                  const days  = getDayCount(fromDate, toDate, leave.isHalfDay)
+                  const hours = hasTime ? calcHours(leave.fromTime, leave.toTime) : null
 
                   return (
                     <tr key={leave.id}
@@ -449,41 +604,48 @@ function EmployeeLeave() {
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(26,171,219,0.03)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
 
-                      <td style={{ padding: '16px 24px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                        {formatDateIN(fromDate)}
-                      </td>
-                      <td style={{ padding: '16px 24px', fontSize: 14, color: 'var(--text-secondary)' }}>
-                        {formatDateIN(toDate)}
-                      </td>
+                      {/* Date / Time */}
                       <td style={{ padding: '16px 24px' }}>
-                        <span style={{
-                          fontSize: 12, fontWeight: 700, padding: '4px 8px', borderRadius: 8,
-                          background: 'rgba(26,171,219,0.08)', color: '#1AABDB'
-                        }}>
-                          {days}d
-                        </span>
+                        <p style={{ fontSize: 13, fontWeight: 600, margin: '0 0 2px', color: 'var(--text-primary)' }}>
+                          {formatDateIN(fromDate)}
+                        </p>
+                        {hasTime ? (
+                          <p style={{ fontSize: 12, margin: 0, fontWeight: 600,
+                            color: isPermRecord ? '#F59E0B' : '#8B5CF6' }}>
+                            {leave.fromTime} – {leave.toTime}
+                            {hours && <span style={{ marginLeft: 6, opacity: 0.7 }}>({hours})</span>}
+                          </p>
+                        ) : !isPermRecord && fromDate !== toDate ? (
+                          <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>
+                            to {formatDateIN(toDate)} · <span style={{ color: '#1AABDB', fontWeight: 600 }}>{days}d</span>
+                          </p>
+                        ) : (
+                          <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>
+                            {leave.isHalfDay ? `Half day (${leave.halfDaySession})` : '1 day'}
+                          </p>
+                        )}
                       </td>
+
+                      {/* Type badge — now correctly shows WFH, Permission, On Duty */}
                       <td style={{ padding: '16px 24px' }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6,
                           padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
-                          ...(leave.type === 'WFH'
-                            ? { background: 'rgba(26,171,219,0.1)', color: '#1AABDB', border: '1px solid rgba(26,171,219,0.2)' }
-                            : { background: 'rgba(148,163,184,0.1)', color: 'var(--text-secondary)', border: '1px solid var(--card-border)' })
+                          background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`
                         }}>
-                          {leave.type === 'WFH'
-                            ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                            : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                          }
-                          {leave.type || 'Leave'}
+                          {cfg.label}
                         </span>
                       </td>
+
+                      {/* Reason */}
                       <td style={{ padding: '16px 24px', fontSize: 14, maxWidth: 200, color: 'var(--text-secondary)' }}>
                         <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                           title={leave.reason}>
                           {leave.reason}
                         </span>
                       </td>
+
+                      {/* Status */}
                       <td style={{ padding: '16px 24px' }}>
                         <span style={{ padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, ...statusStyle(leave.status) }}>
                           {leave.status}

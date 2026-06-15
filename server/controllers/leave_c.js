@@ -7,7 +7,8 @@ const submitLeave = async (req, res) => {
     const {
       empId, date, fromDate, toDate,
       isHalfDay = false, halfDaySession = null,
-      reason, type = 'Leave'
+      reason, type = 'Leave',
+      fromTime = null, toTime = null,
     } = req.body
 
     const employee = await prisma.employee.findUnique({ where: { empId } })
@@ -33,16 +34,25 @@ const submitLeave = async (req, res) => {
         halfDaySession: isHalfDay ? halfDaySession : null,
         reason,
         type,
+        fromTime,
+        toTime
       }
     })
 
-    const diffDays = isHalfDay
-      ? 0.5
-      : Math.floor((new Date(endDate) - new Date(primaryDate)) / (1000 * 60 * 60 * 24)) + 1
-    const dayLabel = isHalfDay
-      ? `0.5 day (${halfDaySession} session)`
-      : `${diffDays} day${diffDays !== 1 ? 's' : ''}`
-
+    let dayLabel
+    if (type === 'Permission') {
+        dayLabel = `permission from ${fromTime} to ${toTime}`
+    } else if (type === 'On Duty') {
+      const diffDays = Math.floor((new Date(endDate) - new Date(primaryDate)) / (1000 * 60 * 60 * 24)) + 1
+      dayLabel = `${diffDays} day${diffDays !== 1 ? 's' : ''} on duty`
+    } else {
+      const diffDays = isHalfDay
+        ? 0.5
+        : Math.floor((new Date(endDate) - new Date(primaryDate)) / (1000 * 60 * 60 * 24)) + 1
+      dayLabel = isHalfDay
+        ? `0.5 day (${halfDaySession} session)`
+        : `${diffDays} day${diffDays !== 1 ? 's' : ''}`  
+   }
     try {
       await prisma.notification.create({
         data: {

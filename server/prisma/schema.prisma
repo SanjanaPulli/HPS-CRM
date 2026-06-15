@@ -105,10 +105,13 @@ model Notification {
 
 model Project {
   id          Int               @id @default(autoincrement())
-  empId       String // kept for backward compat with existing projects
+  empId       String
   name        String
-  description String?
   status      String            @default("Planning")
+  assignedBy  String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  description String?
   priority    String            @default("medium")
   startDate   DateTime?
   endDate     DateTime?
@@ -116,27 +119,23 @@ model Project {
   budget      String?
   category    String?
   teamLeadId  String?
-  assignedBy  String
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
   employee    Employee          @relation(fields: [empId], references: [empId], onDelete: Cascade)
   teamLead    Employee?         @relation("ProjectTeamLead", fields: [teamLeadId], references: [empId])
-  members     ProjectMember[]
   documents   ProjectDocument[]
+  members     ProjectMember[]
 }
 
 model ProjectMember {
   id        Int      @id @default(autoincrement())
   projectId Int
   empId     String
-  role      String   @default("member") // "lead" | "member"
+  role      String   @default("member")
   createdAt DateTime @default(now())
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   employee  Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, empId])
 }
-
 
 model ProjectDocument {
   id           Int      @id @default(autoincrement())
@@ -149,4 +148,3 @@ model ProjectDocument {
   createdAt    DateTime @default(now())
   project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
-
