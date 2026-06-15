@@ -36,7 +36,7 @@ const markAttendance = async (req, res) => {
     if (existing) return res.status(400).json({ error: 'Attendance already marked today', employee })
 
     const onLeave = await prisma.leaveRequest.findFirst({
-      where: { empId, status: 'Approved', date: { gte: today } }
+      where: { empId, status: 'Approved', date: { gte: today, lte: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) } }
     })
     if (onLeave) return res.status(400).json({ error: 'Employee is on approved leave today' })
 
