@@ -7,30 +7,30 @@ datasource db {
 }
 
 model Employee {
-  id                 Int            @id @default(autoincrement())
-  empId              String         @unique
-  barcodeId          String?        @unique
+  id                 Int             @id @default(autoincrement())
+  empId              String          @unique
+  barcodeId          String?         @unique
   name               String
   position           String?
   department         String?
   email              String?
   contact            String?
   joiningDate        String?
-  salary             String?        @default("Not Disclosed")
+  salary             String?         @default("Not Disclosed")
   project            String?
   projectStatus      String?
   teamLead           String?
   dailyWorkStatus    String?
   photo              String?
-  password           String         @default("hps@1234")
-  createdAt          DateTime       @default(now())
-  isAttendanceLeader Boolean        @default(false)
+  password           String          @default("hps@1234")
+  createdAt          DateTime        @default(now())
+  isAttendanceLeader Boolean         @default(false)
   attendance         Attendance[]
   leaveRequest       LeaveRequest[]
   projects           Project[]
+  ledProjects        Project[]       @relation("ProjectTeamLead")
+  projectMembers     ProjectMember[]
   tasks              Task[]
-  ledProjects      Project[]       @relation("ProjectTeamLead")
-  projectMembers   ProjectMember[]
 }
 
 model Attendance {
@@ -106,7 +106,7 @@ model Notification {
 
 model Project {
   id          Int               @id @default(autoincrement())
-  empId       String            // kept for backward compat with existing projects
+  empId       String // kept for backward compat with existing projects
   name        String
   description String?
   status      String            @default("Planning")
@@ -131,7 +131,7 @@ model ProjectMember {
   id        Int      @id @default(autoincrement())
   projectId Int
   empId     String
-  role      String   @default("member")   // "lead" | "member"
+  role      String   @default("member") // "lead" | "member"
   createdAt DateTime @default(now())
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   employee  Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
