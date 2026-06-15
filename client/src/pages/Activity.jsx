@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import BASE_URL from "../config";
 
-const CATEGORIES = ["ALL", "AUTH", "ADMIN", "EMPLOYEE", "ATTENDANCE", "LEAVE", "WORK", "task"];
+const CATEGORIES = ["ALL", "AUTH", "ADMIN", "EMPLOYEE", "ATTENDANCE", "LEAVE", "WORK"];
 
 const CATEGORY_CONFIG = {
   AUTH:       { label: "AUTH",       color: "#3B82F6", bg: "rgba(59,130,246,0.1)"  },
@@ -10,7 +10,6 @@ const CATEGORY_CONFIG = {
   ATTENDANCE: { label: "ATTENDANCE", color: "#14B8A6", bg: "rgba(20,184,166,0.1)"  },
   LEAVE:      { label: "LEAVE",      color: "#F59E0B", bg: "rgba(245,158,11,0.1)"  },
   WORK:       { label: "WORK",       color: "#10B981", bg: "rgba(16,185,129,0.1)"  },
-  task:       { label: "TASK",       color: "#06B6D4", bg: "rgba(6,182,212,0.1)"   },
   DEFAULT:    { label: "OTHER",      color: "#64748B", bg: "rgba(100,116,139,0.1)" },
 };
 
@@ -21,7 +20,6 @@ const CAT_ICONS = {
   ATTENDANCE: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M9 16l2 2 4-4"/></svg>,
   LEAVE: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
   WORK: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
-  task: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>,
   DEFAULT: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/></svg>,
 };
 

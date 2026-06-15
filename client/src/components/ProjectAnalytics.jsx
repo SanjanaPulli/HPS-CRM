@@ -150,10 +150,7 @@ export default function ProjectAnalytics({ projects }) {
     ).length;
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    const allTasks   = projects.flatMap(p => p.tasks || []);
-    const totalTasks = allTasks.length;
-    const doneTasks  = allTasks.filter(t => t.status === "Completed").length;
-    const taskRate   = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+   
 
     const avgProgress = total > 0
       ? Math.round(projects.reduce((a, p) => a + (p.progress || 0), 0) / total)

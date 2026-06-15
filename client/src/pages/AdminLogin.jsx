@@ -26,6 +26,7 @@ export default function AdminLogin() {
          navigate("/admin/dashboard");
     }
       else {
+        
         setError(data.message || "Invalid credentials");
       }
     } catch {
