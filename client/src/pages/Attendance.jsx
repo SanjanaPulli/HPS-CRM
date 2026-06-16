@@ -84,12 +84,15 @@ function Attendance() {
   }, [employees])
 
   const exportCSV = () => {
-    const headers = ['Employee', 'ID', 'Position', 'Department', 'Status', 'Time', 'Leader']
+    const headers = ['Employee', 'ID', 'Position', 'Department', 'Status', 'Check In', 'Check Out', 'Hours', 'Overtime (min)', 'Leader']
     const rows = filtered.map(r => [
       r.employee.name, r.empId,
       r.employee.position || '—', r.employee.department || '—',
       r.status,
-      new Date(r.timestamp).toLocaleTimeString(),
+      (r.checkInTime || r.timestamp) ? new Date(r.checkInTime || r.timestamp).toLocaleTimeString() : '—',
+      r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString() : '—',
+      r.hoursWorked  ?? '—',
+      r.overtimeMinutes ?? '—',
       leaderMap[r.empId] ? 'Yes' : 'No'
     ])
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
@@ -175,11 +178,50 @@ function Attendance() {
 
         {/* Detail grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 16, rowGap: 6, marginBottom: 12 }}>
-          {[
-            { label: 'Position',   value: record.employee.position || '—' },
-            { label: 'Department', value: record.employee.department || '—' },
-            { label: 'Time',       value: new Date(record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) },
-          ].map(({ label, value }) => (
+          {
+            [
+              { label: 'Position', value: record.employee.position || '—' },
+
+              { label: 'Department', value: record.employee.department || '—' },
+
+              {
+               label: 'Check In',
+               value:
+               (record.checkInTime || record.timestamp)
+                 ? new Date(record.checkInTime || record.timestamp).toLocaleTimeString('en-IN', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                 })
+               : '—'
+              },
+
+              {
+                label: 'Check Out',
+                value: record.checkOutTime
+                  ? `✅ ${new Date(record.checkOutTime).toLocaleTimeString('en-IN', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}`
+                  : '⏳ Pending'
+              },
+
+              {
+               label: 'Hours',
+               value:
+                 record.hoursWorked != null
+                   ? `${record.hoursWorked}h`
+                   : '—'
+              },
+
+              {
+               label: 'OT',
+               value:
+                 record.overtimeMinutes != null
+                 ? `${record.overtimeMinutes} min`
+                 : '—'
+              },
+            ]
+          .map(({ label, value }) => (
             <div key={label}>
               <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', margin: 0 }}>{label}</p>
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{value}</p>
@@ -249,10 +291,71 @@ function Attendance() {
           </span>
         </td>
         <td style={{ padding: '16px 24px', fontSize: 14, color: 'var(--text-secondary)' }}>
-          {new Date(record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+          {record.checkInTime || record.timestamp
+            ? new Date(record.checkInTime || record.timestamp).toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            : '—'}
         </td>
-        <td style={{ padding: '16px 24px' }}>
-          <button
+
+        <td style={{ padding: '16px 24px', fontSize: 14, color: 'var(--text-secondary)' }}>
+          {record.checkOutTime ? (
+            new Date(record.checkOutTime).toLocaleTimeString('en-IN', {
+             hour: '2-digit',
+             minute: '2-digit'
+          })
+        ) : (
+          <span
+            style={{
+              fontSize: 11,
+              padding: '2px 8px',
+              borderRadius: 9999,
+              background: 'rgba(245,158,11,0.1)',
+              color: '#D97706'
+           }}
+          >
+           Pending
+         </span>
+        )}
+      </td>
+
+      <td style={{ padding: '16px 24px', fontSize: 14, color: 'var(--text-secondary)' }}>
+       {record.hoursWorked != null
+         ? `${record.hoursWorked}h`
+         : '—'}
+      </td>
+
+      <td style={{ padding: '16px 24px', fontSize: 14 }}>
+      {record.overtimeMinutes != null ? (
+         <span
+           style={{
+             fontSize: 12,
+             fontWeight: 600,
+             padding: '3px 10px',
+             borderRadius: 9999,
+             background:
+                record.overtimeMinutes >= 0
+                  ? 'rgba(16,185,129,0.1)'
+                  : 'rgba(239,68,68,0.1)',
+             color:
+               record.overtimeMinutes >= 0
+                 ? '#059669'
+                 : '#DC2626'
+            }}
+          >
+           {record.overtimeMinutes >= 0
+             ? `+${record.overtimeMinutes}`
+             : record.overtimeMinutes}{' '}
+           min
+         </span>
+       ) : (
+         '—'
+       )}
+     </td>
+
+     <td style={{ padding: '16px 24px' }}>
+       <button
             onClick={() => toggleLeader(record.empId, isLeader)}
             disabled={isToggling}
             style={{
@@ -274,7 +377,7 @@ function Attendance() {
   const tableHead = (
     <thead>
       <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--card-border)' }}>
-        {['Employee', 'Position', 'Department', 'Status', 'Time', 'Scan Access'].map(h => (
+        {['Employee','Position','Department','Status','Check In','Check Out','Hours','OT (min)','Scan Access'].map(h => (
           <th key={h} style={{
             textAlign: 'left', fontSize: 12, fontWeight: 600,
             padding: '16px 24px', color: 'var(--text-secondary)',

@@ -74,6 +74,26 @@ const QuickActionCard = ({ icon, title, subtitle, onClick, theme }) => (
   </button>
 );
 
+// Role-aware icon: briefcase for manager, shield for admin
+const RoleIcon = ({ role }) => {
+  if (role === "manager") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2"/>
+        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+        <line x1="12" y1="12" x2="12" y2="12"/>
+        <path d="M12 12h.01"/>
+      </svg>
+    );
+  }
+  // Default: shield/admin icon
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  );
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { theme } = useTheme();
@@ -81,6 +101,11 @@ export default function Dashboard() {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
+
+  // Resolve role and display name from localStorage
+  const role = localStorage.getItem("role") || "admin"; // "admin" | "manager"
+  const displayName = localStorage.getItem("adminName") || (role === "manager" ? "Manager" : "Admin");
+  const roleLabel = role === "manager" ? "Manager" : "Admin";
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -167,6 +192,10 @@ export default function Dashboard() {
     },
   ];
 
+  // Role badge colors
+  const roleBadgeBg    = role === "manager" ? "rgba(245,158,11,0.12)" : "rgba(26,171,219,0.12)";
+  const roleBadgeColor = role === "manager" ? "#F59E0B" : "#1AABDB";
+
   return (
     <div>
       {/* Header */}
@@ -175,10 +204,29 @@ export default function Dashboard() {
           <div style={{ width: 4, height: 24, borderRadius: 999, background: "#1AABDB", flexShrink: 0 }} />
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>Dashboard</h1>
         </div>
-        <p style={{ fontSize: 14, margin: "0 0 0 12px", color: "var(--text-secondary)" }}>
-              Welcome back, {localStorage.getItem("adminName") || "Admin"}
-        </p>
+
+        {/* Welcome row with name + role badge */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          marginLeft: 12, marginTop: 2, flexWrap: "wrap",
+        }}>
+          <p style={{ fontSize: 14, margin: 0, color: "var(--text-secondary)" }}>
+            Welcome back, <strong style={{ color: "var(--text-primary)" }}>{displayName}</strong>
+          </p>
+
+          {/* Role badge with icon */}
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            padding: "2px 8px", borderRadius: 999,
+            background: roleBadgeBg, color: roleBadgeColor,
+            fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
+          }}>
+            <RoleIcon role={role} />
+            {roleLabel}
+          </span>
+        </div>
       </div>
+
       {/* Scanner CTA */}
       <div
         onClick={() => navigate('/scan?from=admin')}
@@ -192,26 +240,27 @@ export default function Dashboard() {
         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(26,171,219,0.4)' }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(26,171,219,0.3)' }}
       >
-       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{
-           width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.2)',
-           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-        }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/>
-            <path d="M14 14h2v2h-2zM18 14h3M14 18h2M18 18v3M20 14v2"/>
-          </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <path d="M14 14h2v2h-2zM18 14h3M14 18h2M18 18v3M20 14v2"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>Attendance Scanner</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: '2px 0 0' }}>Tap to open the barcode scanner terminal</p>
+          </div>
         </div>
-        <div>
-          <p style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>Attendance Scanner</p>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: '2px 0 0' }}>Tap to open the barcode scanner terminal</p>
-        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
       </div>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14M12 5l7 7-7 7"/>
-      </svg>
-      </div>
+
       {/* Stat cards — 1 col mobile, 3 col desktop */}
       <div style={{
         display: "grid",

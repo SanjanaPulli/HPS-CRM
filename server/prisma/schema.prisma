@@ -33,11 +33,16 @@ model Employee {
 }
 
 model Attendance {
-  id        Int      @id @default(autoincrement())
-  empId     String
-  status    String
-  timestamp DateTime @default(now())
-  employee  Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
+  id               Int       @id @default(autoincrement())
+  empId            String
+  status           String    // Present | Late | Absent | On Leave
+  timestamp        DateTime  @default(now())  // check-in time
+  checkInTime      DateTime?
+  checkOutTime     DateTime?
+  hoursWorked      Float?    // decimal hours e.g. 8.5
+  overtimeMinutes  Int?      // can be negative (left early)
+
+  employee         Employee  @relation(fields: [empId], references: [empId])
 }
 
 model LeaveRequest {

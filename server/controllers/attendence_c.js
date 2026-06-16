@@ -2,86 +2,144 @@ const prisma = require('../prismaClient')
 const { validateBarcodeId } = require('../barcodeHelper')
 const logActivity = require('../utils/activityLogger')
 
-const createAnnouncement = async (req, res) => {
-  try {
-    console.log("REQ BODY:", req.body)
+// Standard shift: 9:30 AM to 5:30 PM IST = 8 hours
+const STANDARD_HOURS = 8
+const LATE_HOUR = 10
+const LATE_MIN  = 0
 
-    const { title, body, type, targetEmpIds, priority, expiresAt } = req.body
-    res.status(200).json({
-      message: 'createAnnouncement logged',
-      data: { title, body, type, targetEmpIds, priority, expiresAt }
-    })
-  } catch (error) {
-    console.error('createAnnouncement error:', error)
-    res.status(500).json({ error: 'Failed to create announcement' })
-  }
+const getISTDate = () => {
+  const now = new Date()
+  return new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
 }
 
 const markAttendance = async (req, res) => {
   try {
+    console.log('SCAN RECEIVED - barcodeId:', req.body.barcodeId)
+    console.log('SPLIT empId:', req.body.barcodeId?.split('-')[0])
     const { barcodeId } = req.body
+
     if (!validateBarcodeId(barcodeId)) {
       return res.status(400).json({ error: 'Invalid barcode — not a valid HPS ID' })
     }
+
     const empId = barcodeId.split('-')[0]
     const employee = await prisma.employee.findUnique({ where: { empId } })
     if (!employee) return res.status(404).json({ error: 'Employee not found' })
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    const existing = await prisma.attendance.findFirst({
-      where: { empId, timestamp: { gte: today } }
-    })
-    if (existing) return res.status(400).json({ error: 'Attendance already marked today', employee })
-
-    const onLeave = await prisma.leaveRequest.findFirst({
-      where: { empId, status: 'Approved', date: { gte: today, lte: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) } }
-    })
-    if (onLeave) return res.status(400).json({ error: 'Employee is on approved leave today' })
-
     const now = new Date()
-    const istOffset = 5.5 * 60 * 60 * 1000
-    const ist = new Date(now.getTime() + istOffset)
+    const ist = getISTDate()
 
-    const hour = ist.getUTCHours()
-    const minute = ist.getUTCMinutes()
-    const totalMinutes = hour * 60 + minute
+    // Today's start (midnight UTC)
+    const todayStart = new Date(now)
+    todayStart.setHours(0, 0, 0, 0)
 
-    const PRESENT_FROM = 9 * 60 + 30   // 9:30 AM
-    const LATE_AFTER   = 10 * 60        // 10:00 AM
+    // Check approved leave
+    const onLeave = await prisma.leaveRequest.findFirst({
+      where: {
+        empId,
+        status: 'Approved',
+        date: {
+          gte: todayStart,
+          lte: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1)
+        }
+      }
+    })
+    if (onLeave) {
+      return res.status(400).json({ error: 'Employee is on approved leave today' })
+    }
 
-    const isLate = totalMinutes >= LATE_AFTER
-    const status = isLate ? 'Late' : 'Present'
+    // Find existing record for today
+    const existing = await prisma.attendance.findFirst({
+      where: { empId, timestamp: { gte: todayStart } }
+    })
 
-    const attendance = await prisma.attendance.create({ data: { empId, status } })
+    // ── CHECK-OUT ────────────────────────────────────────────────────────────
+    if (existing) {
+      // Already fully checked out
+      if (existing.checkOutTime) {
+        return res.status(400).json({
+          error: 'Already checked in AND out today',
+          employee,
+          attendance: existing
+        })
+      }
+
+      // Calculate hours worked
+      const checkIn      = new Date(existing.checkInTime || existing.timestamp)
+      const checkOut     = now
+      const diffMs       = checkOut - checkIn
+      const hoursWorked  = diffMs / (1000 * 60 * 60)
+      const overtimeMinutes = Math.round((hoursWorked - STANDARD_HOURS) * 60)
+
+      const updated = await prisma.attendance.update({
+        where: { id: existing.id },
+        data: {
+          checkOutTime:    now,
+          hoursWorked:     Math.round(hoursWorked * 100) / 100,
+          overtimeMinutes: overtimeMinutes,
+        }
+      })
+
+      await logActivity({
+        empId:        employee.empId,
+        employeeName: employee.name,
+        action:       'Check-Out',
+        category:     'ATTENDANCE',
+        details:      `Worked ${hoursWorked.toFixed(2)}h | OT: ${overtimeMinutes}min`
+      })
+
+      return res.status(200).json({
+        message:         'Checked out successfully',
+        type:            'checkout',
+        employee,
+        attendance:      updated,
+        hoursWorked:     Math.round(hoursWorked * 100) / 100,
+        overtimeMinutes: overtimeMinutes
+      })
+    }
+
+    // ── CHECK-IN ─────────────────────────────────────────────────────────────
+    const hour         = ist.getUTCHours()
+    const min          = ist.getUTCMinutes()
+    const totalMinutes = hour * 60 + min
+    const isLate       = totalMinutes >= LATE_HOUR * 60 + LATE_MIN
+    const status       = isLate ? 'Late' : 'Present'
+
+    const attendance = await prisma.attendance.create({
+      data: {
+        empId,
+        status,
+        checkInTime: now,
+      }
+    })
 
     await logActivity({
-      empId: employee.empId,
+      empId:        employee.empId,
       employeeName: employee.name,
-      action: 'Attendance Marked',
-      category: 'ATTENDANCE',
-      details: status
+      action:       'Check-In',
+      category:     'ATTENDANCE',
+      details:      status
     })
 
-    res.status(201).json({
-      message: isLate ? 'Attendance marked — Late!' : 'Attendance marked!',
+    return res.status(201).json({
+      message:    isLate ? 'Checked in — Late!' : 'Checked in successfully',
+      type:       'checkin',
       employee,
       attendance
     })
+
   } catch (error) {
     console.error('markAttendance error:', error)
     res.status(500).json({ error: 'Failed to mark attendance' })
   }
 }
 
-// ✅ NEW — today only
 const getTodayAttendance = async (req, res) => {
   try {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const records = await prisma.attendance.findMany({
-      where: { timestamp: { gte: today } },
+      where:   { timestamp: { gte: today } },
       include: { employee: true },
       orderBy: { timestamp: 'desc' }
     })
@@ -91,7 +149,6 @@ const getTodayAttendance = async (req, res) => {
   }
 }
 
-// GET all with optional date filter ?date=2026-05-29
 const getAllAttendance = async (req, res) => {
   try {
     const { date } = req.query
@@ -117,7 +174,7 @@ const getAllAttendance = async (req, res) => {
 const getAttendanceByEmployee = async (req, res) => {
   try {
     const records = await prisma.attendance.findMany({
-      where: { empId: req.params.empId },
+      where:   { empId: req.params.empId },
       orderBy: { timestamp: 'desc' }
     })
     res.json(records)

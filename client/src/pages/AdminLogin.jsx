@@ -21,12 +21,15 @@ export default function AdminLogin() {
       });
       const data = await res.json();
       if (res.ok) {
-          localStorage.setItem("adminAuth", "true");
-          localStorage.setItem("adminName", form.username);
-         navigate("/admin/dashboard");
-    }
-      else {
-        
+        // Derive role from the name returned by backend ("Admin" or "Manager")
+        const role = data.name === "Manager" ? "manager" : "admin";
+
+        localStorage.setItem("adminAuth", "true");
+        localStorage.setItem("adminName", data.name);  // "Admin" or "Manager"
+        localStorage.setItem("role", role);             // "admin" or "manager"
+
+        navigate("/admin/dashboard");
+      } else {
         setError(data.message || "Invalid credentials");
       }
     } catch {
@@ -60,7 +63,7 @@ export default function AdminLogin() {
 
       <div className="w-full max-w-sm relative z-10">
 
-        {/* Logo — clean, no box, same size as employee */}
+        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <img src="/hps_new_logo.png" alt="HPS" style={{ height: "48px", display: "block", marginBottom: "16px" }} />
           <div className="px-3 py-1 rounded-full text-xs font-semibold tracking-widest uppercase"

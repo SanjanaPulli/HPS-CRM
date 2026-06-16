@@ -1,0 +1,5 @@
+ALTER TABLE "Attendance"
+  ADD COLUMN IF NOT EXISTS "checkInTime"     TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS "checkOutTime"    TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS "hoursWorked"     FLOAT,
+  ADD COLUMN IF NOT EXISTS "overtimeMinutes" INTEGER;

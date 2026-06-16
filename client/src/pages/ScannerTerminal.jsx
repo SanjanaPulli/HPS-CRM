@@ -9,6 +9,7 @@ const STATUS_SCANNING = 'scanning'
 const STATUS_SUCCESS  = 'success'
 const STATUS_ERROR    = 'error'
 const STATUS_LATE     = 'late'
+const STATUS_CHECKOUT = 'checkout'
 
 export default function ScannerTerminal() {
   const html5QrRef = useRef(null)
@@ -18,9 +19,10 @@ export default function ScannerTerminal() {
   const [empName, setEmpName]   = useState('')
   const [time, setTime]         = useState(new Date())
   const [lastScan, setLastScan] = useState(null)
+  const [scanType, setScanType] = useState(null)
   const cooldownRef = useRef(false)
   const [searchParams] = useSearchParams()
-  const from = searchParams.get('from') // 'admin' | 'employee' | null
+  const from = searchParams.get('from')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -95,28 +97,34 @@ export default function ScannerTerminal() {
   const handleScan = async (barcodeId) => {
     try {
       const res = await axios.post(`${BASE_URL}/api/attendance/scan`, { barcodeId })
-      const { employee, attendance } = res.data
+      const { employee, attendance, type, hoursWorked, overtimeMinutes } = res.data
       const name = employee?.name || barcodeId
-      const attendanceStatus = attendance?.status
 
       setEmpName(name)
-      setLastScan({ empId: employee?.empId, name, status: attendanceStatus })
+      setScanType(type)
+      setLastScan({ empId: employee?.empId, name, status: attendance?.status, hoursWorked, overtimeMinutes })
 
-      if (attendanceStatus === 'Late') {
+      if (type === 'checkout') {
+        setStatus(STATUS_CHECKOUT)
+        const otText =
+          overtimeMinutes > 0 ? `+${overtimeMinutes}min overtime`
+          : overtimeMinutes < 0 ? `${Math.abs(overtimeMinutes)}min short`
+          : 'Exact shift'
+        setMessage(`Worked ${hoursWorked}h · ${otText}`)
+      } else if (attendance?.status === 'Late') {
         setStatus(STATUS_LATE)
-        setMessage('Marked as Late — after 10:15 AM')
+        setMessage('Checked in — Late (after 10:00 AM)')
       } else {
         setStatus(STATUS_SUCCESS)
-        setMessage('Attendance marked successfully')
+        setMessage('Checked in successfully')
       }
     } catch (err) {
       const errMsg = err.response?.data?.error || 'Failed to mark attendance. Try again.'
-
       if (err.response?.status === 400 && err.response?.data?.employee) {
         const name = err.response.data.employee.name
         setEmpName(name)
         setStatus(STATUS_ERROR)
-        setMessage('Attendance already marked today!')
+        setMessage(errMsg)
         setLastScan({ empId: err.response.data.employee.empId, name })
       } else {
         setStatus(STATUS_ERROR)
@@ -130,6 +138,7 @@ export default function ScannerTerminal() {
     setMessage('')
     setEmpName('')
     setLastScan(null)
+    setScanType(null)
   }
 
   const formatTime = (d) =>
@@ -138,7 +147,7 @@ export default function ScannerTerminal() {
   const formatDate = (d) =>
     d.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
-  const isAfterCutoff = time.getHours() > 10 || (time.getHours() === 10 && time.getMinutes() >= 15)
+  const isAfterCutoff = time.getHours() > 10 || (time.getHours() === 10 && time.getMinutes() >= 0)
 
   return (
     <div style={{
@@ -154,9 +163,7 @@ export default function ScannerTerminal() {
 
       {/* Grid background */}
       <div style={{
-        position: 'fixed',
-        inset: 0,
-        pointerEvents: 'none',
+        position: 'fixed', inset: 0, pointerEvents: 'none',
         backgroundImage: 'linear-gradient(rgba(26,171,219,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(26,171,219,0.03) 1px, transparent 1px)',
         backgroundSize: '40px 40px'
       }} />
@@ -167,35 +174,23 @@ export default function ScannerTerminal() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '32px' }}>
           <img src="/hps_new_logo_white.png" alt="HPS" style={{ height: '48px', objectFit: 'contain', marginBottom: '16px' }} />
           <div style={{
-            padding: '4px 12px',
-            borderRadius: '9999px',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            marginBottom: '16px',
-            background: 'rgba(26,171,219,0.12)',
-            color: '#1AABDB',
-            border: '1px solid rgba(26,171,219,0.2)'
+            padding: '4px 12px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600,
+            letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '16px',
+            background: 'rgba(26,171,219,0.12)', color: '#1AABDB', border: '1px solid rgba(26,171,219,0.2)'
           }}>
             Attendance Terminal
           </div>
           <p style={{ fontSize: '2.25rem', fontWeight: 700, color: '#fff', fontVariantNumeric: 'tabular-nums', margin: 0 }}>
             {formatTime(time)}
           </p>
-          <p style={{ color: '#64748B', fontSize: '0.875rem', marginTop: '4px', margin: '4px 0 0' }}>
+          <p style={{ color: '#64748B', fontSize: '0.875rem', margin: '4px 0 0' }}>
             {formatDate(time)}
           </p>
           {isAfterCutoff && (
             <div style={{
-              marginTop: '12px',
-              padding: '4px 12px',
-              borderRadius: '9999px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              background: 'rgba(234,179,8,0.12)',
-              color: '#EAB308',
-              border: '1px solid rgba(234,179,8,0.2)'
+              marginTop: '12px', padding: '4px 12px', borderRadius: '9999px',
+              fontSize: '0.75rem', fontWeight: 600,
+              background: 'rgba(234,179,8,0.12)', color: '#EAB308', border: '1px solid rgba(234,179,8,0.2)'
             }}>
               ⚠ After 10:00 AM — will be marked Late
             </div>
@@ -204,24 +199,16 @@ export default function ScannerTerminal() {
 
         {/* Main card */}
         <div style={{
-          borderRadius: '24px',
-          padding: '24px',
-          background: '#161B27',
-          border: '1px solid rgba(255,255,255,0.07)'
+          borderRadius: '24px', padding: '24px',
+          background: '#161B27', border: '1px solid rgba(255,255,255,0.07)'
         }}>
 
           {/* Scanner viewport */}
-          <div
-            id="qr-reader"
-            style={{
-              width: '100%',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              marginBottom: '24px',
-              background: '#0D1117',
-              display: scanning ? 'block' : 'none',
-            }}
-          />
+          <div id="qr-reader" style={{
+            width: '100%', borderRadius: '16px', overflow: 'hidden',
+            marginBottom: '24px', background: '#0D1117',
+            display: scanning ? 'block' : 'none',
+          }} />
 
           {/* States */}
           {!scanning && (
@@ -258,9 +245,9 @@ export default function ScannerTerminal() {
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
                   </div>
-                  <p style={{ color: '#4ADE80', fontWeight: 700, fontSize: '1.25rem', marginBottom: '4px', margin: '0 0 4px' }}>{empName}</p>
-                  <p style={{ color: '#94A3B8', fontSize: '0.875rem', marginBottom: '4px', margin: '0 0 4px' }}>{message}</p>
-                  {lastScan?.empId && <p style={{ color: '#475569', fontSize: '0.75rem', marginTop: '4px', margin: '4px 0 0' }}>{lastScan.empId}</p>}
+                  <p style={{ color: '#4ADE80', fontWeight: 700, fontSize: '1.25rem', margin: '0 0 4px' }}>{empName}</p>
+                  <p style={{ color: '#94A3B8', fontSize: '0.875rem', margin: '0 0 4px' }}>{message}</p>
+                  {lastScan?.empId && <p style={{ color: '#475569', fontSize: '0.75rem', margin: '4px 0 0' }}>{lastScan.empId}</p>}
                 </>
               )}
 
@@ -275,9 +262,30 @@ export default function ScannerTerminal() {
                       <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                     </svg>
                   </div>
-                  <p style={{ color: '#FACC15', fontWeight: 700, fontSize: '1.25rem', marginBottom: '4px', margin: '0 0 4px' }}>{empName}</p>
-                  <p style={{ color: '#EAB308', fontSize: '0.875rem', marginBottom: '4px', margin: '0 0 4px' }}>{message}</p>
-                  {lastScan?.empId && <p style={{ color: '#475569', fontSize: '0.75rem', marginTop: '4px', margin: '4px 0 0' }}>{lastScan.empId}</p>}
+                  <p style={{ color: '#FACC15', fontWeight: 700, fontSize: '1.25rem', margin: '0 0 4px' }}>{empName}</p>
+                  <p style={{ color: '#EAB308', fontSize: '0.875rem', margin: '0 0 4px' }}>{message}</p>
+                  {lastScan?.empId && <p style={{ color: '#475569', fontSize: '0.75rem', margin: '4px 0 0' }}>{lastScan.empId}</p>}
+                </>
+              )}
+
+              {status === STATUS_CHECKOUT && (
+                <>
+                  <div style={{
+                    width: '80px', height: '80px', borderRadius: '9999px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px',
+                    background: 'rgba(139,92,246,0.1)', border: '2px solid rgba(139,92,246,0.3)'
+                  }}>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                      <polyline points="16 17 21 12 16 7"/>
+                      <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                  </div>
+                  <p style={{ color: '#A78BFA', fontWeight: 700, fontSize: '1.1rem', margin: '0 0 4px' }}>
+                    {empName} — Checked Out
+                  </p>
+                  <p style={{ color: '#94A3B8', fontSize: '0.875rem', margin: '0 0 4px' }}>{message}</p>
+                  {lastScan?.empId && <p style={{ color: '#475569', fontSize: '0.75rem', marginTop: '4px' }}>{lastScan.empId}</p>}
                 </>
               )}
 
@@ -292,7 +300,7 @@ export default function ScannerTerminal() {
                       <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
                   </div>
-                  <p style={{ color: '#F87171', fontWeight: 700, fontSize: '1.125rem', marginBottom: '8px', margin: '0 0 8px' }}>Scan Failed</p>
+                  <p style={{ color: '#F87171', fontWeight: 700, fontSize: '1.125rem', margin: '0 0 8px' }}>Scan Failed</p>
                   <p style={{ color: '#94A3B8', fontSize: '0.875rem', textAlign: 'center', padding: '0 16px', margin: 0 }}>{message}</p>
                 </>
               )}
@@ -302,14 +310,14 @@ export default function ScannerTerminal() {
 
           {/* Buttons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
             {!scanning && status === STATUS_IDLE && (
               <button
                 onClick={startScanner}
                 style={{
                   width: '100%', padding: '14px', borderRadius: '16px',
                   fontSize: '0.875rem', fontWeight: 600, color: '#fff',
-                  background: '#1AABDB', border: 'none', cursor: 'pointer',
-                  transition: 'background 0.2s'
+                  background: '#1AABDB', border: 'none', cursor: 'pointer', transition: 'background 0.2s'
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = '#158fc0'}
                 onMouseLeave={e => e.currentTarget.style.background = '#1AABDB'}
@@ -332,15 +340,14 @@ export default function ScannerTerminal() {
               </button>
             )}
 
-            {(status === STATUS_SUCCESS || status === STATUS_LATE || status === STATUS_ERROR) && (
+            {(status === STATUS_SUCCESS || status === STATUS_LATE || status === STATUS_ERROR || status === STATUS_CHECKOUT) && (
               <>
                 <button
                   onClick={startScanner}
                   style={{
                     width: '100%', padding: '14px', borderRadius: '16px',
                     fontSize: '0.875rem', fontWeight: 600, color: '#fff',
-                    background: '#1AABDB', border: 'none', cursor: 'pointer',
-                    transition: 'background 0.2s'
+                    background: '#1AABDB', border: 'none', cursor: 'pointer', transition: 'background 0.2s'
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = '#158fc0'}
                   onMouseLeave={e => e.currentTarget.style.background = '#1AABDB'}
@@ -360,37 +367,36 @@ export default function ScannerTerminal() {
                 </button>
               </>
             )}
+
           </div>
         </div>
 
         {/* Footer */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '24px' }}>
-          {/* Back button */}
           <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
-          <button
-            onClick={() => navigate(from === 'admin' ? '/admin/dashboard' : '/employee/dashboard')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 20px', borderRadius: 12,
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#94A3B8', fontSize: '0.875rem', fontWeight: 500,
-              cursor: 'pointer', transition: 'all 0.2s'
-             }}
-             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,171,219,0.1)'; e.currentTarget.style.color = '#1AABDB'; e.currentTarget.style.borderColor = 'rgba(26,171,219,0.3)' }}
-             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
-           >
-             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-               <path d="M19 12H5M12 19l-7-7 7-7"/>
-             </svg>
-             Back to {from === 'admin' ? 'Admin Dashboard' : 'My Dashboard'}
+            <button
+              onClick={() => navigate(from === 'admin' ? '/admin/dashboard' : '/employee/dashboard')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 20px', borderRadius: 12,
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#94A3B8', fontSize: '0.875rem', fontWeight: 500,
+                cursor: 'pointer', transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,171,219,0.1)'; e.currentTarget.style.color = '#1AABDB'; e.currentTarget.style.borderColor = 'rgba(26,171,219,0.3)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+              Back to {from === 'admin' ? 'Admin Dashboard' : 'My Dashboard'}
             </button>
           </div>
-          
-          
         </div>
+
         <p style={{ textAlign: 'center', color: '#334155', fontSize: '0.75rem', marginTop: '12px' }}>
-          HPS Pvt Ltd · Attendance Terminal · No login required
+          HPS Pvt Ltd · Attendance Terminal 
         </p>
 
       </div>
