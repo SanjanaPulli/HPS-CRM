@@ -30,6 +30,8 @@ import ScrollToTop from './components/ScrollToTop'
 import RequireAuth from './RequireAuth.jsx'
 import RequireLeader from './RequireLeader.jsx'
 import TodoEmbed from './pages/TodoEmbed'
+import EmployeeCalendar from './pages/EmployeeCalender'
+import AdminCalendar from './pages/AdminCalender'
 
 function App() {
   return (
@@ -68,6 +70,7 @@ function App() {
           <Route path="activity" element={<Activity />} />
           <Route path="settings" element={<Settings />} />
           <Route path="todo" element={<TodoEmbed />} />
+          <Route path="calendar" element={<AdminCalendar />} />
         </Route>
 
         {/* 🔐 EMPLOYEE ROUTES (PROTECTED) */}
@@ -86,6 +89,7 @@ function App() {
           <Route path="scan" element={<TeamScan />} />
           <Route path="settings" element={<Settings />} />
           <Route path="todo" element={<TodoEmbed />} />
+          <Route path="calendar" element={<EmployeeCalendar />} />
         </Route>
 
       </Routes>

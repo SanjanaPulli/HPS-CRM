@@ -153,3 +153,10 @@ model ProjectDocument {
   createdAt    DateTime @default(now())
   project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
+model Holiday {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  name      String
+  type      String   @default("National") // National | Optional | Company
+  createdAt DateTime @default(now())
+}

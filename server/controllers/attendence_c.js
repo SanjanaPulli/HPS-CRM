@@ -3,9 +3,22 @@ const { validateBarcodeId } = require('../barcodeHelper')
 const logActivity = require('../utils/activityLogger')
 
 // Standard shift: 9:30 AM to 5:30 PM IST = 8 hours
-const STANDARD_HOURS = 8
-const LATE_HOUR = 10
-const LATE_MIN  = 0
+const getOfficeSettings = async () => {
+  const settings = await prisma.officeSetting.findFirst()
+  const lateAfter    = settings?.lateAfter    || '10:00'
+  const checkOutTime = settings?.checkOutTime || '17:30'
+  const checkInTime  = settings?.checkInTime  || '09:30'
+
+  const [lh, lm] = lateAfter.split(':').map(Number)
+  const [oh, om] = checkOutTime.split(':').map(Number)
+  const [ih, im] = checkInTime.split(':').map(Number)
+
+  const shiftStartMins = ih * 60 + im
+  const shiftEndMins   = oh * 60 + om
+  const standardHours  = (shiftEndMins - shiftStartMins) / 60
+
+  return { lateHour: lh, lateMin: lm, standardHours }
+}
 
 const getISTDate = () => {
   const now = new Date()
@@ -69,7 +82,8 @@ const markAttendance = async (req, res) => {
       const checkOut     = now
       const diffMs       = checkOut - checkIn
       const hoursWorked  = diffMs / (1000 * 60 * 60)
-      const overtimeMinutes = Math.round((hoursWorked - STANDARD_HOURS) * 60)
+      const { standardHours } = await getOfficeSettings()
+const overtimeMinutes = Math.round((hoursWorked - standardHours) * 60)
 
       const updated = await prisma.attendance.update({
         where: { id: existing.id },
@@ -102,7 +116,8 @@ const markAttendance = async (req, res) => {
     const hour         = ist.getUTCHours()
     const min          = ist.getUTCMinutes()
     const totalMinutes = hour * 60 + min
-    const isLate       = totalMinutes >= LATE_HOUR * 60 + LATE_MIN
+    const { lateHour, lateMin, standardHours } = await getOfficeSettings()
+    const isLate = totalMinutes >= lateHour * 60 + lateMin
     const status       = isLate ? 'Late' : 'Present'
 
     const attendance = await prisma.attendance.create({

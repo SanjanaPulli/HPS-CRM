@@ -13,6 +13,7 @@ const settingsRouter     = require('./routes/settings_r')
 const activityRoutes     = require('./routes/activity_r')
 const startScheduler     = require('./scheduler')
 const logActivity        = require('./utils/activityLogger')
+const holidayRoutes       = require('./routes/holiday_r')
 
 const app = express()
 app.use(cors({ origin: '*' }))
@@ -31,7 +32,7 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/announcements', announcementRoutes)
 app.use('/api/settings',      settingsRouter)
 app.use('/api/activity',      activityRoutes)
-
+app.use('/api/holidays',       holidayRoutes)
 app.get('/', (req, res) => res.send('HPS Attendance Server is running!'))
 
 // ── In-memory admin accounts ───────────────────────────────────────────────
