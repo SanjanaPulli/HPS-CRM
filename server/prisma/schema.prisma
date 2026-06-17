@@ -51,6 +51,8 @@ model LeaveRequest {
   date           DateTime
   fromDate       DateTime?
   toDate         DateTime?
+  fromTime       String?
+  toTime         String?
   isHalfDay      Boolean   @default(false)
   halfDaySession String?
   reason         String

@@ -33,11 +33,9 @@ const submitLeave = async (req, res) => {
         isHalfDay:      Boolean(isHalfDay),
         halfDaySession: isHalfDay ? halfDaySession : null,
         reason,
-        type,
-        fromTime,
-        toTime
+        type
       }
-    })
+   })
 
     let dayLabel
     if (type === 'Permission') {
