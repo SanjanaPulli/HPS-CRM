@@ -51,25 +51,49 @@ const adminAccounts = [
 
 // POST /api/admin/login
 app.post('/api/admin/login', async (req, res) => {
+  console.time('adminLogin')
+
   const { username, password } = req.body
+
+  console.time('adminLookup')
   const user = adminAccounts.find(
     a => a.username === username && a.password === password
   )
+  console.timeEnd('adminLookup')
+
   if (user) {
+    console.time('adminLogActivity')
+
     await logActivity({
-      empId: null, employeeName: user.name,
-      action: 'Admin Login', category: 'AUTH',
+      empId: null,
+      employeeName: user.name,
+      action: 'Admin Login',
+      category: 'AUTH',
       details: `"${user.name}" logged into the admin portal`
     })
-    res.json({ message: 'Login successful', name: user.name })
+
+    console.timeEnd('adminLogActivity')
+
+    res.json({
+      message: 'Login successful',
+      name: user.name
+    })
   } else {
+    console.time('adminLogActivityFailed')
     await logActivity({
-      empId: null, employeeName: 'Unknown',
-      action: 'Admin Login Failed', category: 'AUTH',
+      empId: null,
+      employeeName: 'Unknown',
+      action: 'Admin Login Failed',
+      category: 'AUTH',
       details: `Failed login attempt for username "${username}"`
     })
-    res.status(401).json({ message: 'Invalid credentials' })
+    console.timeEnd('adminLogActivityFailed')
+    res.status(401).json({
+      message: 'Invalid credentials'
+    })
   }
+
+  console.timeEnd('adminLogin')
 })
 
 // PATCH /api/admin/password

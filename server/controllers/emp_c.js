@@ -113,9 +113,20 @@ const deleteEmployee = async (req, res) => {
 const loginEmployee = async (req, res) => {
   try {
     const { empId, password } = req.body
-    const employee = await prisma.employee.findUnique({ where: { empId } })
-    if (!employee) return res.status(404).json({ error: 'Employee not found' })
-    if (employee.password !== password) return res.status(401).json({ error: 'Invalid credentials' })
+
+    console.time('findEmployee')
+    const employee = await prisma.employee.findUnique({
+      where: { empId }
+    })
+    console.timeEnd('findEmployee')
+
+    if (!employee)
+      return res.status(404).json({ error: 'Employee not found' })
+
+    if (employee.password !== password)
+      return res.status(401).json({ error: 'Invalid credentials' })
+
+    console.time('activityLog')
     await logActivity({
       empId: employee.empId,
       employeeName: employee.name,
@@ -123,9 +134,16 @@ const loginEmployee = async (req, res) => {
       category: 'AUTH',
       details: 'Logged into CRM'
     })
+    console.timeEnd('activityLog')
+
     const { password: _, ...employeeData } = employee
-    res.json({ message: 'Login successful', employee: employeeData })
+
+    res.json({
+      message: 'Login successful',
+      employee: employeeData
+    })
   } catch (error) {
+    console.error(error)
     res.status(500).json({ error: 'Failed to login' })
   }
 }
