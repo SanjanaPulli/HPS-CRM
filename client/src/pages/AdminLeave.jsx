@@ -25,11 +25,9 @@ function calcHours(fromTime, toTime) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
-// Resolve type for records that may have been stored without a type field
 function resolveType(leave) {
   const KNOWN = ['Leave', 'WFH', 'Permission', 'On Duty']
   if (leave.type && KNOWN.includes(leave.type)) return leave.type
-  // Only infer Permission from times if no type at all (legacy records)
   if (!leave.type && (leave.fromTime || leave.toTime)) return 'Permission'
   return 'Leave'
 }
@@ -44,22 +42,17 @@ const TYPE_CONFIG = {
 function DaysBadge({ leave }) {
   const type  = resolveType(leave)
   const hours = calcHours(leave.fromTime, leave.toTime)
-
   if (type === 'Permission') {
     return hours
       ? <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 8, background: 'rgba(245,158,11,0.1)', color: '#D97706' }}>{hours}</span>
       : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
   }
-
   if (type === 'On Duty' && hours) {
     return <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 8, background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}>{hours}</span>
   }
   const days = getDayCount(leave.fromDate || leave.date, leave.toDate || leave.date, leave.isHalfDay)
   return (
-    <span style={{
-      fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 8,
-      background: 'rgba(26,171,219,0.1)', color: '#1AABDB',
-    }}>
+    <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 8, background: 'rgba(26,171,219,0.1)', color: '#1AABDB' }}>
       {days}d
     </span>
   )
@@ -70,17 +63,11 @@ function TypeBadge({ leave }) {
   const cfg  = TYPE_CONFIG[type] || TYPE_CONFIG.Leave
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <span style={{
-        padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-        width: 'fit-content',
-        background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
-      }}>{cfg.label}</span>
+      <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, width: 'fit-content', background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+        {cfg.label}
+      </span>
       {leave.isHalfDay && (
-        <span style={{
-          padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-          width: 'fit-content',
-          background: 'rgba(168,85,247,0.1)', color: '#a855f7',
-        }}>
+        <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, width: 'fit-content', background: 'rgba(168,85,247,0.1)', color: '#a855f7' }}>
           {leave.halfDaySession}
         </span>
       )}
@@ -96,52 +83,50 @@ function StatusBadge({ status }) {
   }
   const s = styles[status] || styles.Pending
   return (
+    <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', ...s }}>
+      {status}
+    </span>
+  )
+}
+
+// Reason cell — shows full text wrapped, no truncation
+function ReasonCell({ reason }) {
+  if (!reason) return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+  return (
     <span style={{
-      padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-      whiteSpace: 'nowrap', ...s,
-    }}>{status}</span>
+      fontSize: 12,
+      color: 'var(--text-secondary)',
+      display: 'block',
+      lineHeight: 1.5,
+      wordBreak: 'break-word',
+      whiteSpace: 'normal',
+      minWidth: 140,
+      maxWidth: 220,
+    }}>
+      {reason}
+    </span>
   )
 }
 
 function exportCSV(data) {
-  const headers = [
-    'Employee', 'Emp ID', 'Department',
-    'From', 'To', 'Days / Hours',
-    'Type', 'Half Day', 'Session',
-    'From Time', 'To Time',
-    'Reason', 'Status', 'Applied On',
-  ]
+  const headers = ['Employee','Emp ID','Department','From','To','Days / Hours','Type','Half Day','Session','From Time','To Time','Reason','Status','Applied On']
   const rows = data.map(l => {
     const type = resolveType(l)
     const daysOrHours = type === 'Permission'
       ? (calcHours(l.fromTime, l.toTime) || '—')
       : getDayCount(l.fromDate || l.date, l.toDate || l.date, l.isHalfDay) + 'd'
     return [
-      l.employee?.name || '',
-      l.empId,
-      l.employee?.department || '',
-      formatDateIN(l.fromDate || l.date),
-      formatDateIN(l.toDate   || l.date),
-      daysOrHours,
-      type,
-      l.isHalfDay ? 'Yes' : 'No',
-      l.halfDaySession || '',
-      l.fromTime || '',
-      l.toTime   || '',
-      l.reason,
-      l.status,
-      formatDateIN(l.createdAt),
+      l.employee?.name || '', l.empId, l.employee?.department || '',
+      formatDateIN(l.fromDate || l.date), formatDateIN(l.toDate || l.date),
+      daysOrHours, type, l.isHalfDay ? 'Yes' : 'No', l.halfDaySession || '',
+      l.fromTime || '', l.toTime || '', l.reason, l.status, formatDateIN(l.createdAt),
     ]
   })
-  const csv = [headers, ...rows]
-    .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
-    .join('\n')
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')
-  a.href = url
-  a.download = `leave_requests_${new Date().toISOString().split('T')[0]}.csv`
-  a.click()
+  a.href = url; a.download = `leave_requests_${new Date().toISOString().split('T')[0]}.csv`; a.click()
   URL.revokeObjectURL(url)
 }
 
@@ -271,10 +256,10 @@ export default function AdminLeave() {
   }
 
   const statPills = [
-    { label: 'Pending',       value: pendingCount,  color: '#D97706', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.2)',  onClick: () => setStatusFilter('Pending')  },
-    { label: 'Approved',      value: approvedCount, color: '#059669', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.2)',  onClick: () => setStatusFilter('Approved') },
-    { label: 'Rejected',      value: rejectedCount, color: '#DC2626', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.2)',   onClick: () => setStatusFilter('Rejected') },
-    { label: 'Approved Days', value: `${totalDays}d`, color: '#1AABDB', bg: 'rgba(26,171,219,0.08)', border: 'rgba(26,171,219,0.2)', onClick: () => {} },
+    { label: 'Pending',       value: pendingCount,    color: '#D97706', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.2)',  onClick: () => setStatusFilter('Pending')  },
+    { label: 'Approved',      value: approvedCount,   color: '#059669', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.2)',  onClick: () => setStatusFilter('Approved') },
+    { label: 'Rejected',      value: rejectedCount,   color: '#DC2626', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.2)',   onClick: () => setStatusFilter('Rejected') },
+    { label: 'Approved Days', value: `${totalDays}d`, color: '#1AABDB', bg: 'rgba(26,171,219,0.08)', border: 'rgba(26,171,219,0.2)',  onClick: () => {} },
   ]
 
   return (
@@ -310,11 +295,7 @@ export default function AdminLeave() {
       </div>
 
       {/* Stat pills */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-        gap: 12, marginBottom: 24,
-      }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
         {statPills.map(s => (
           <button key={s.label} onClick={s.onClick}
             style={{
@@ -331,11 +312,7 @@ export default function AdminLeave() {
       </div>
 
       {/* Filter bar */}
-      <div style={{
-        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-        borderRadius: 16, marginBottom: 20, overflow: 'hidden',
-      }}>
-        {/* Always-visible row */}
+      <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16, marginBottom: 20, overflow: 'hidden' }}>
         <div style={{
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
           padding: '12px 16px',
@@ -356,10 +333,9 @@ export default function AdminLeave() {
                 }}>
                 {f}
                 {f === 'Pending' && pendingCount > 0 && statusFilter !== 'Pending' && (
-                  <span style={{
-                    background: '#FBBF24', color: '#78350F',
-                    borderRadius: 999, padding: '0 6px', fontSize: 11, fontWeight: 700,
-                  }}>{pendingCount}</span>
+                  <span style={{ background: '#FBBF24', color: '#78350F', borderRadius: 999, padding: '0 6px', fontSize: 11, fontWeight: 700 }}>
+                    {pendingCount}
+                  </span>
                 )}
               </button>
             ))}
@@ -402,8 +378,6 @@ export default function AdminLeave() {
         {/* Expandable advanced filters */}
         {filtersOpen && (
           <div style={{ padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
-
-            {/* Type — now includes Permission & On Duty */}
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>Type</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -423,7 +397,6 @@ export default function AdminLeave() {
               </div>
             </div>
 
-            {/* Department */}
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>Department</p>
               <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
@@ -434,7 +407,6 @@ export default function AdminLeave() {
               </select>
             </div>
 
-            {/* Date from */}
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>From date</p>
               <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
@@ -443,7 +415,6 @@ export default function AdminLeave() {
                 onBlur={e => e.target.style.border = '1px solid var(--card-border)'} />
             </div>
 
-            {/* Date to */}
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>To date</p>
               <input type="date" value={dateTo} min={dateFrom} onChange={e => setDateTo(e.target.value)}
@@ -452,7 +423,6 @@ export default function AdminLeave() {
                 onBlur={e => e.target.style.border = '1px solid var(--card-border)'} />
             </div>
 
-            {/* Sort */}
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>Sort by</p>
               <select value={sortBy} onChange={e => setSortBy(e.target.value)}
@@ -480,16 +450,11 @@ export default function AdminLeave() {
 
       {/* Result count */}
       <p style={{ fontSize: 12, marginBottom: 12, color: 'var(--text-muted)' }}>
-        {filtered.length} request{filtered.length !== 1 ? 's' : ''}
-        {hasActiveFilters ? ' matching filters' : ''}
+        {filtered.length} request{filtered.length !== 1 ? 's' : ''}{hasActiveFilters ? ' matching filters' : ''}
       </p>
 
       {error && (
-        <div style={{
-          marginBottom: 16, padding: '12px 16px', borderRadius: 16, fontSize: 14,
-          background: 'rgba(239,68,68,0.08)', color: '#EF4444',
-          border: '1px solid rgba(239,68,68,0.2)',
-        }}>
+        <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 16, fontSize: 14, background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
           {error}
         </div>
       )}
@@ -498,20 +463,12 @@ export default function AdminLeave() {
       <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16, overflow: 'hidden' }}>
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 64 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%',
-              border: '2px solid #1AABDB', borderTopColor: 'transparent',
-              animation: 'spin 0.7s linear infinite',
-            }} />
+            <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid #1AABDB', borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite' }} />
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 64 }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 16, margin: '0 auto 12px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(26,171,219,0.08)',
-            }}>
+            <div style={{ width: 48, height: 48, borderRadius: 16, margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(26,171,219,0.08)' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="1.8">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
@@ -519,35 +476,31 @@ export default function AdminLeave() {
             </div>
             <p style={{ fontSize: 14, fontWeight: 500, margin: '0 0 8px', color: 'var(--text-secondary)' }}>No requests found</p>
             {hasActiveFilters && (
-              <button onClick={clearAllFilters}
-                style={{ fontSize: 12, color: '#1AABDB', background: 'none', border: 'none', cursor: 'pointer' }}>
+              <button onClick={clearAllFilters} style={{ fontSize: 12, color: '#1AABDB', background: 'none', border: 'none', cursor: 'pointer' }}>
                 Clear filters
               </button>
             )}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--card-border)' }}>
                   {['Employee', 'Dept', 'Date / Time', 'Days', 'Type', 'Reason', 'Status', 'Actions'].map(h => (
-                    <th key={h} style={{
-                      textAlign: 'left', fontSize: 11, fontWeight: 600,
-                      padding: '12px 16px', color: 'var(--text-secondary)',
-                    }}>{h}</th>
+                    <th key={h} style={{ textAlign: 'left', fontSize: 11, fontWeight: 600, padding: '12px 16px', color: 'var(--text-secondary)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(leave => {
-                  const type        = resolveType(leave)
-                  const fromDate    = leave.fromDate || leave.date
-                  const toDate      = leave.toDate   || leave.date
-                  const isPerm      = type === 'Permission'
-                  const isOD        = type === 'On Duty'
-                  const hours       = (isPerm || isOD) ? calcHours(leave.fromTime, leave.toTime) : null
-                  const hasTime     = !!(hours && leave.fromTime && leave.toTime)
-                  const multiDay    = !isPerm && fromDate !== toDate
+                  const type     = resolveType(leave)
+                  const fromDate = leave.fromDate || leave.date
+                  const toDate   = leave.toDate   || leave.date
+                  const isPerm   = type === 'Permission'
+                  const isOD     = type === 'On Duty'
+                  const hours    = (isPerm || isOD) ? calcHours(leave.fromTime, leave.toTime) : null
+                  const hasTime  = !!(hours && leave.fromTime && leave.toTime)
+                  const multiDay = !isPerm && fromDate !== toDate
 
                   return (
                     <tr key={leave.id}
@@ -558,11 +511,7 @@ export default function AdminLeave() {
                       {/* Employee */}
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{
-                            width: 28, height: 28, borderRadius: '50%', background: '#1AABDB',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0,
-                          }}>
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#1AABDB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
                             {leave.employee?.name?.charAt(0)}
                           </div>
                           <div style={{ minWidth: 0 }}>
@@ -579,21 +528,18 @@ export default function AdminLeave() {
                         {leave.employee?.department || '—'}
                       </td>
 
-                      {/* Date / Time — merged column */}
+                      {/* Date / Time */}
                       <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                         <p style={{ fontSize: 12, fontWeight: 600, margin: '0 0 2px', color: 'var(--text-primary)' }}>
                           {formatDateIN(fromDate)}
                         </p>
                         {hasTime ? (
-                          <p style={{ fontSize: 11, margin: 0, fontWeight: 600,
-                            color: isPerm ? '#D97706' : '#7C3AED' }}>
+                          <p style={{ fontSize: 11, margin: 0, fontWeight: 600, color: isPerm ? '#D97706' : '#7C3AED' }}>
                             {leave.fromTime} – {leave.toTime}
                             <span style={{ marginLeft: 4, opacity: 0.7 }}>({hours})</span>
                           </p>
                         ) : multiDay ? (
-                          <p style={{ fontSize: 11, margin: 0, color: 'var(--text-muted)' }}>
-                            to {formatDateIN(toDate)}
-                          </p>
+                          <p style={{ fontSize: 11, margin: 0, color: 'var(--text-muted)' }}>to {formatDateIN(toDate)}</p>
                         ) : (
                           <p style={{ fontSize: 11, margin: 0, color: 'var(--text-muted)' }}>
                             {leave.isHalfDay ? `Half day · ${leave.halfDaySession}` : 'Full day'}
@@ -601,16 +547,15 @@ export default function AdminLeave() {
                         )}
                       </td>
 
-                      {/* Days / Hours */}
+                      {/* Days */}
                       <td style={{ padding: '12px 16px' }}><DaysBadge leave={leave} /></td>
 
                       {/* Type */}
                       <td style={{ padding: '12px 16px' }}><TypeBadge leave={leave} /></td>
 
-                      {/* Reason */}
-                      <td style={{ padding: '12px 16px', fontSize: 12, maxWidth: 150, color: 'var(--text-secondary)' }}>
-                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                          title={leave.reason}>{leave.reason}</span>
+                      {/* Reason — full text, wraps naturally */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <ReasonCell reason={leave.reason} />
                       </td>
 
                       {/* Status */}
@@ -621,26 +566,12 @@ export default function AdminLeave() {
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                           {leave.status === 'Pending' ? (
                             <>
-                              <button onClick={() => updateStatus(leave.id, 'Approved')}
-                                disabled={updating === leave.id}
-                                style={{
-                                  background: '#16a34a', color: '#fff', border: 'none',
-                                  padding: '4px 10px', borderRadius: 8,
-                                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                                  whiteSpace: 'nowrap', fontFamily: 'inherit',
-                                  opacity: updating === leave.id ? 0.5 : 1,
-                                }}>
+                              <button onClick={() => updateStatus(leave.id, 'Approved')} disabled={updating === leave.id}
+                                style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', opacity: updating === leave.id ? 0.5 : 1 }}>
                                 Approve
                               </button>
-                              <button onClick={() => updateStatus(leave.id, 'Rejected')}
-                                disabled={updating === leave.id}
-                                style={{
-                                  background: '#ef4444', color: '#fff', border: 'none',
-                                  padding: '4px 10px', borderRadius: 8,
-                                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                                  whiteSpace: 'nowrap', fontFamily: 'inherit',
-                                  opacity: updating === leave.id ? 0.5 : 1,
-                                }}>
+                              <button onClick={() => updateStatus(leave.id, 'Rejected')} disabled={updating === leave.id}
+                                style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', opacity: updating === leave.id ? 0.5 : 1 }}>
                                 Reject
                               </button>
                             </>
@@ -648,13 +579,7 @@ export default function AdminLeave() {
                             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
                           )}
                           <button onClick={() => deleteLeave(leave.id)}
-                            style={{
-                              background: 'rgba(239,68,68,0.1)', color: '#EF4444',
-                              border: '1px solid rgba(239,68,68,0.2)',
-                              padding: '4px 10px', borderRadius: 8,
-                              fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                              whiteSpace: 'nowrap', fontFamily: 'inherit',
-                            }}
+                            style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)', padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
                             onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}>
                             Delete

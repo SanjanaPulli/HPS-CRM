@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
 import BASE_URL from '../config'
 
@@ -23,6 +23,19 @@ const HOLIDAY_TYPE_COLORS = {
   National: { color: '#DC2626', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.2)'   },
   Optional: { color: '#D97706', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.2)'  },
   Company:  { color: '#7C3AED', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.2)'  },
+}
+
+const STATUS_NOTATION = {
+  Present: 'P',
+  Late: 'Late',
+  Absent: 'Abs',
+  Leave: 'Leave',
+  WFH: 'WFH',
+  Permission: 'Perm',
+  'On Duty': 'OD',
+  Holiday: 'Hol',
+  Weekend: 'WE',
+  Pending: 'Req',
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -53,6 +66,19 @@ function parseDays(str) {
   return (str || 'Mon,Tue,Wed,Thu,Fri').split(',').map(d => map[d.trim()]).filter(d => d !== undefined)
 }
 
+function resolveRequestType(leave) {
+  const known = ['Leave', 'WFH', 'Permission', 'On Duty']
+  if (leave?.type && known.includes(leave.type)) return leave.type
+  if (!leave?.type && (leave?.fromTime || leave?.toTime)) return 'Permission'
+  return 'Leave'
+}
+
+// Returns true if (year, month) is before the current month
+function isBeforeCurrentMonth(year, month) {
+  const now = new Date()
+  return year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth())
+}
+
 // ─── Day Detail Bottom Sheet ─────────────────────────────────────────────────
 
 function DaySheet({ day, onClose }) {
@@ -65,6 +91,10 @@ function DaySheet({ day, onClose }) {
 
   const approvedLeaves = leaves.filter(l => l.status === 'Approved')
   const pendingLeaves  = leaves.filter(l => l.status === 'Pending')
+  const approvedType   = approvedLeaves[0] ? resolveRequestType(approvedLeaves[0]) : null
+
+  // A day counts as "covered" if there's an approved leave/WFH/OD
+  const isCoveredByLeave = approvedType !== null
 
   return (
     <div
@@ -127,8 +157,18 @@ function DaySheet({ day, onClose }) {
             </div>
           )}
 
-          {/* Attendance */}
-          {attendance ? (
+          {/* Approved leave/WFH/OD — shown prominently, replaces "absent" display */}
+          {isCoveredByLeave && (
+            <div style={{ padding: '12px 14px', borderRadius: 12, background: (STATUS_CONFIG[approvedType] || STATUS_CONFIG.Leave).bg, border: `1px solid ${(STATUS_CONFIG[approvedType] || STATUS_CONFIG.Leave).border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 800, padding: '4px 8px', borderRadius: 8, background: 'var(--card-bg)', color: (STATUS_CONFIG[approvedType] || STATUS_CONFIG.Leave).color }}>
+                {STATUS_NOTATION[approvedType] || approvedType}
+              </span>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: (STATUS_CONFIG[approvedType] || STATUS_CONFIG.Leave).color }}>{approvedType}</p>
+            </div>
+          )}
+
+          {/* Attendance — only show if NOT covered by leave */}
+          {attendance && !isCoveredByLeave ? (
             <div style={{ padding: '14px', borderRadius: 12, background: 'var(--surface2)', border: '1px solid var(--card-border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Attendance</p>
@@ -144,15 +184,11 @@ function DaySheet({ day, onClose }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div style={{ padding: '10px', borderRadius: 10, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
                   <p style={{ margin: '0 0 3px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>CHECK IN</p>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#10B981' }}>
-                    {fmtTime(attendance.checkInTime) || '—'}
-                  </p>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#10B981' }}>{fmtTime(attendance.checkInTime) || '—'}</p>
                 </div>
                 <div style={{ padding: '10px', borderRadius: 10, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
                   <p style={{ margin: '0 0 3px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>CHECK OUT</p>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#64748B' }}>
-                    {fmtTime(attendance.checkOutTime) || '—'}
-                  </p>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#64748B' }}>{fmtTime(attendance.checkOutTime) || '—'}</p>
                 </div>
                 {attendance.hoursWorked != null && (
                   <div style={{ padding: '10px', borderRadius: 10, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
@@ -168,23 +204,25 @@ function DaySheet({ day, onClose }) {
                 )}
               </div>
             </div>
-          ) : !isWeekend && !holiday && (
+          ) : !isCoveredByLeave && !isWeekend && !holiday && (
+            // Only show "no attendance" if not a leave/WFH/OD day
             <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#EF4444' }}>No attendance recorded</p>
             </div>
           )}
 
-          {/* Approved Leaves */}
+          {/* Approved Leaves detail */}
           {approvedLeaves.length > 0 && (
             <div>
               <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Approved Requests</p>
               {approvedLeaves.map(l => {
-                const cfg = STATUS_CONFIG[l.type] || STATUS_CONFIG.Leave
+                const type = resolveRequestType(l)
+                const cfg = STATUS_CONFIG[type] || STATUS_CONFIG.Leave
                 return (
                   <div key={l.id} style={{ padding: '12px 14px', borderRadius: 12, background: cfg.bg, border: `1px solid ${cfg.border}`, marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>{l.type}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>{type}</span>
                       {l.isHalfDay && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 9999, background: 'rgba(26,171,219,0.1)', color: '#1AABDB', fontWeight: 600 }}>Half day</span>}
                     </div>
                     <p style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)' }}>{l.reason}</p>
@@ -204,7 +242,7 @@ function DaySheet({ day, onClose }) {
               {pendingLeaves.map(l => (
                 <div key={l.id} style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#F59E0B' }}>{l.type}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#F59E0B' }}>{resolveRequestType(l)}</span>
                     <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 9999, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontWeight: 600 }}>Pending</span>
                   </div>
                   <p style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)' }}>{l.reason}</p>
@@ -228,33 +266,36 @@ function DaySheet({ day, onClose }) {
 function CalendarCell({ dayData, onClick }) {
   if (!dayData) return <div style={{ aspectRatio: '1', minHeight: 44 }} />
 
-  const { date, dayNum, isToday, isCurrentMonth, isWeekend, holiday, attendance, leaves } = dayData
+  const { dayNum, isToday, isCurrentMonth, isWeekend, holiday, attendance, leaves } = dayData
 
   const approvedLeaves = leaves.filter(l => l.status === 'Approved')
   const pendingLeaves  = leaves.filter(l => l.status === 'Pending')
+  const approvedType   = approvedLeaves[0] ? resolveRequestType(approvedLeaves[0]) : null
 
-  // Determine primary color of the cell
-  let primaryStatus = null
-  if (holiday)               primaryStatus = 'Holiday'
-  else if (isWeekend)        primaryStatus = 'Weekend'
-  else if (attendance)       primaryStatus = attendance.status
-  else if (approvedLeaves.length > 0) primaryStatus = approvedLeaves[0].type
-  else                       primaryStatus = null
+  // Priority: approved leave/WFH/OD > holiday > weekend > attendance status
+  const primaryStatus = approvedType
+    ? approvedType
+    : holiday
+    ? 'Holiday'
+    : isWeekend
+      ? 'Weekend'
+      : attendance
+        ? attendance.status
+        : null
 
   const cfg = primaryStatus ? (STATUS_CONFIG[primaryStatus] || STATUS_CONFIG.Leave) : null
-  const isHoliday = !!holiday
-  const hasLeave  = approvedLeaves.length > 0
   const hasPending = pendingLeaves.length > 0
+  const cfgBg = cfg ? cfg.bg : 'transparent'
 
   return (
     <button
       onClick={() => onClick(dayData)}
       style={{
-        aspectRatio: '1', minHeight: 44,
+        aspectRatio: '1', minHeight: 36,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         gap: 3, borderRadius: 10, position: 'relative',
         border: isToday ? '2px solid #1AABDB' : '1px solid transparent',
-        background: cfg ? cfg.bg : 'transparent',
+        background: cfgBg,
         cursor: 'pointer', transition: 'all 0.15s',
         opacity: isCurrentMonth ? 1 : 0.3,
         padding: '4px 2px',
@@ -262,25 +303,22 @@ function CalendarCell({ dayData, onClick }) {
     >
       {/* Day number */}
       <span style={{
-        fontSize: 13, fontWeight: isToday ? 800 : 600, lineHeight: 1,
+        fontSize: 12, fontWeight: isToday ? 800 : 600, lineHeight: 1,
         color: isToday ? '#1AABDB' : cfg ? cfg.color : 'var(--text-primary)',
       }}>
         {dayNum}
       </span>
 
-      {/* Dots row */}
-      <div style={{ display: 'flex', gap: 2, alignItems: 'center', height: 6 }}>
-        {attendance && (
-          <div style={{ width: 5, height: 5, borderRadius: 9999, background: STATUS_CONFIG[attendance.status]?.color || '#10B981', flexShrink: 0 }} />
+      <div style={{ display: 'flex', gap: 2, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', minHeight: 15 }}>
+        {primaryStatus && (
+          <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1, padding: '3px 4px', borderRadius: 5, background: 'var(--card-bg)', color: cfg?.color || 'var(--text-primary)', border: `1px solid ${cfg?.border || 'var(--card-border)'}` }}>
+            {STATUS_NOTATION[primaryStatus] || primaryStatus}
+          </span>
         )}
-        {hasLeave && (
-          <div style={{ width: 5, height: 5, borderRadius: 9999, background: STATUS_CONFIG[approvedLeaves[0].type]?.color || '#64748B', flexShrink: 0 }} />
-        )}
-        {hasPending && (
-          <div style={{ width: 5, height: 5, borderRadius: 9999, background: '#F59E0B', flexShrink: 0 }} />
-        )}
-        {isHoliday && (
-          <div style={{ width: 5, height: 5, borderRadius: 9999, background: HOLIDAY_TYPE_COLORS[holiday.type]?.color || '#DC2626', flexShrink: 0 }} />
+        {hasPending && !approvedType && (
+          <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1, padding: '3px 4px', borderRadius: 5, background: 'var(--card-bg)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }}>
+            Req
+          </span>
         )}
       </div>
     </button>
@@ -291,20 +329,20 @@ function CalendarCell({ dayData, onClick }) {
 
 function Legend() {
   const items = [
-    { color: '#10B981', label: 'Present' },
-    { color: '#F59E0B', label: 'Late'    },
-    { color: '#EF4444', label: 'Absent'  },
-    { color: '#1AABDB', label: 'WFH'     },
-    { color: '#64748B', label: 'Leave'   },
-    { color: '#8B5CF6', label: 'On Duty' },
-    { color: '#DC2626', label: 'Holiday' },
-    { color: '#94A3B8', label: 'Weekend' },
+    { key: 'P',     label: 'Present'          },
+    { key: 'Late',  label: 'Late'             },
+    { key: 'Leave', label: 'Leave'            },
+    { key: 'WFH',   label: 'Work from home'   },
+    { key: 'OD',    label: 'On duty'          },
+    { key: 'Hol',   label: 'Holiday'          },
+    { key: 'WE',    label: 'Weekend'          },
+    { key: 'Req',   label: 'Request pending'  },
   ]
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', padding: '12px 0 4px' }}>
-      {items.map(({ color, label }) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '10px 0 2px' }}>
+      {items.map(({ key, label }) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 9999, background: color, flexShrink: 0 }} />
+          <span style={{ minWidth: 24, textAlign: 'center', fontSize: 9, fontWeight: 800, padding: '3px 5px', borderRadius: 6, color: 'var(--text-primary)', background: 'var(--surface2)', border: '1px solid var(--card-border)' }}>{key}</span>
           <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</span>
         </div>
       ))}
@@ -312,50 +350,71 @@ function Legend() {
   )
 }
 
-// ─── Monthly Summary Bar ─────────────────────────────────────────────────────
+// ─── Month/Year Picker ────────────────────────────────────────────────────────
 
-function MonthlySummary({ days, settings }) {
-  const workingDayNums = parseDays(settings?.workingDays)
-  const stats = { present: 0, late: 0, absent: 0, leave: 0, wfh: 0, holiday: 0 }
-  const today = toYMD(new Date())
+function MonthYearPicker({ viewYear, viewMonth, onChange, onClose }) {
+  const [pickerYear, setPickerYear] = useState(viewYear)
+  const now = new Date()
+  const currentYear  = now.getFullYear()
+  const currentMonth = now.getMonth()
 
-  days.forEach(d => {
-    if (!d || !d.isCurrentMonth) return
-    if (d.date > today) return
-    if (d.holiday) { stats.holiday++; return }
-    if (d.isWeekend) return
-    if (d.attendance?.status === 'Present') stats.present++
-    else if (d.attendance?.status === 'Late') stats.late++
-    else {
-      const approved = d.leaves.filter(l => l.status === 'Approved')
-      if (approved.some(l => l.type === 'WFH')) stats.wfh++
-      else if (approved.length > 0) stats.leave++
-      else stats.absent++
-    }
-  })
-
-  const items = [
-    { label: 'Present', value: stats.present, color: '#10B981' },
-    { label: 'Late',    value: stats.late,    color: '#F59E0B' },
-    { label: 'Leave',   value: stats.leave,   color: '#64748B' },
-    { label: 'WFH',     value: stats.wfh,     color: '#1AABDB' },
-    { label: 'Absent',  value: stats.absent,  color: '#EF4444' },
-  ].filter(i => i.value > 0)
-
-  if (!items.length) return null
+  // Can't go to a year before current
+  const canGoPrevYear = pickerYear > currentYear
 
   return (
-    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
-      {items.map(({ label, value, color }) => (
-        <div key={label} style={{
-          flexShrink: 0, padding: '8px 14px', borderRadius: 10,
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          textAlign: 'center', minWidth: 60,
-        }}>
-          <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color }}>{value}</p>
-          <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', marginTop: 1 }}>{label}</p>
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ width: 300, borderRadius: 18, background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Year row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--card-border)', background: 'var(--surface2)' }}>
+          <button
+            onClick={() => canGoPrevYear && setPickerYear(y => y - 1)}
+            disabled={!canGoPrevYear}
+            style={{ width: 32, height: 32, borderRadius: 9999, border: '1px solid var(--card-border)', background: 'var(--card-bg)', cursor: canGoPrevYear ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', opacity: canGoPrevYear ? 1 : 0.3 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>{pickerYear}</span>
+          <button
+            onClick={() => setPickerYear(y => y + 1)}
+            style={{ width: 32, height: 32, borderRadius: 9999, border: '1px solid var(--card-border)', background: 'var(--card-bg)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
-      ))}
+
+        {/* Month grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, padding: 12 }}>
+          {MONTH_NAMES.map((name, idx) => {
+            const isSelected = idx === viewMonth && pickerYear === viewYear
+            const isPast = pickerYear < currentYear || (pickerYear === currentYear && idx < currentMonth)
+
+            return (
+              <button
+                key={name}
+                disabled={isPast}
+                onClick={() => { onChange(pickerYear, idx); onClose() }}
+                style={{
+                  padding: '9px 4px', borderRadius: 10, border: 'none',
+                  cursor: isPast ? 'not-allowed' : 'pointer',
+                  fontSize: 12, fontWeight: isSelected ? 800 : 500,
+                  background: isSelected ? '#1AABDB' : 'var(--surface2)',
+                  color: isSelected ? '#fff' : isPast ? 'var(--text-muted)' : 'var(--text-primary)',
+                  opacity: isPast ? 0.35 : 1,
+                  transition: 'all 0.12s',
+                }}
+              >
+                {name.slice(0, 3)}
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
@@ -369,15 +428,14 @@ export default function EmployeeCalendar({ empId, holidays: propHolidays, myLeav
   const [settings,   setSettings]   = useState(null)
   const [loading,    setLoading]    = useState(true)
   const [selectedDay,setSelectedDay]= useState(null)
+  const [showPicker, setShowPicker] = useState(false)
 
   const now = new Date()
   const [viewYear,  setViewYear]  = useState(now.getFullYear())
   const [viewMonth, setViewMonth] = useState(now.getMonth())
 
-  // Fetch all data
   useEffect(() => {
     if (!empId) return
-    setLoading(true)
     Promise.all([
       axios.get(`${BASE_URL}/api/attendance/${empId}`).catch(() => ({ data: [] })),
       axios.get(`${BASE_URL}/api/holidays`).catch(() => ({ data: [] })),
@@ -400,12 +458,8 @@ export default function EmployeeCalendar({ empId, holidays: propHolidays, myLeav
   })
 
   const holidayMap = {}
-  holidays.forEach(h => {
-    const key = toYMD(h.date)
-    holidayMap[key] = h
-  })
+  holidays.forEach(h => { holidayMap[toYMD(h.date)] = h })
 
-  // Build leave map — a date can have multiple leaves
   const leaveMap = {}
   myLeaves.forEach(l => {
     const from = new Date(l.fromDate || l.date)
@@ -419,64 +473,42 @@ export default function EmployeeCalendar({ empId, holidays: propHolidays, myLeav
 
   const workingDayNums = parseDays(settings?.workingDays || 'Mon,Tue,Wed,Thu,Fri,Sat')
 
-  // Build calendar grid for current view month
-  const calendarDays = useCallback(() => {
+  const calendarDays = () => {
     const firstOfMonth = new Date(viewYear, viewMonth, 1)
-    const startDow = firstOfMonth.getDay() // 0=Sun
+    const startDow = firstOfMonth.getDay()
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
     const todayStr = toYMD(new Date())
-
     const cells = []
 
-    // Padding before month start
     for (let i = 0; i < startDow; i++) {
       const d = new Date(viewYear, viewMonth, 1 - (startDow - i))
       const dateStr = toYMD(d)
-      cells.push({
-        date: dateStr, dayNum: d.getDate(), isCurrentMonth: false,
-        isToday: dateStr === todayStr,
-        isWeekend: !workingDayNums.includes(d.getDay()),
-        holiday: holidayMap[dateStr] || null,
-        attendance: attMap[dateStr] || null,
-        leaves: leaveMap[dateStr] || [],
-      })
+      cells.push({ date: dateStr, dayNum: d.getDate(), isCurrentMonth: false, isToday: dateStr === todayStr, isWeekend: !workingDayNums.includes(d.getDay()), holiday: holidayMap[dateStr] || null, attendance: attMap[dateStr] || null, leaves: leaveMap[dateStr] || [] })
     }
-
-    // Days of month
     for (let i = 1; i <= daysInMonth; i++) {
       const d = new Date(viewYear, viewMonth, i)
       const dateStr = toYMD(d)
-      cells.push({
-        date: dateStr, dayNum: i, isCurrentMonth: true,
-        isToday: dateStr === todayStr,
-        isWeekend: !workingDayNums.includes(d.getDay()),
-        holiday: holidayMap[dateStr] || null,
-        attendance: attMap[dateStr] || null,
-        leaves: leaveMap[dateStr] || [],
-      })
+      cells.push({ date: dateStr, dayNum: i, isCurrentMonth: true, isToday: dateStr === todayStr, isWeekend: !workingDayNums.includes(d.getDay()), holiday: holidayMap[dateStr] || null, attendance: attMap[dateStr] || null, leaves: leaveMap[dateStr] || [] })
     }
-
-    // Pad to complete last row
     const remaining = (7 - (cells.length % 7)) % 7
     for (let i = 1; i <= remaining; i++) {
       const d = new Date(viewYear, viewMonth + 1, i)
       const dateStr = toYMD(d)
-      cells.push({
-        date: dateStr, dayNum: d.getDate(), isCurrentMonth: false,
-        isToday: dateStr === todayStr,
-        isWeekend: !workingDayNums.includes(d.getDay()),
-        holiday: holidayMap[dateStr] || null,
-        attendance: attMap[dateStr] || null,
-        leaves: leaveMap[dateStr] || [],
-      })
+      cells.push({ date: dateStr, dayNum: d.getDate(), isCurrentMonth: false, isToday: dateStr === todayStr, isWeekend: !workingDayNums.includes(d.getDay()), holiday: holidayMap[dateStr] || null, attendance: attMap[dateStr] || null, leaves: leaveMap[dateStr] || [] })
     }
-
     return cells
-  }, [viewYear, viewMonth, attMap, holidayMap, leaveMap, workingDayNums])
+  }
 
   const days = calendarDays()
 
+  // ── Navigation: future-only ──
+  const isPrevDisabled = isBeforeCurrentMonth(
+    viewMonth === 0 ? viewYear - 1 : viewYear,
+    viewMonth === 0 ? 11 : viewMonth - 1
+  )
+
   const goToPrevMonth = () => {
+    if (isPrevDisabled) return
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
     else setViewMonth(m => m - 1)
   }
@@ -484,15 +516,10 @@ export default function EmployeeCalendar({ empId, holidays: propHolidays, myLeav
     if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) }
     else setViewMonth(m => m + 1)
   }
-  const goToToday = () => {
-    const n = new Date()
-    setViewYear(n.getFullYear())
-    setViewMonth(n.getMonth())
-  }
+  const goToToday = () => { setViewYear(now.getFullYear()); setViewMonth(now.getMonth()) }
 
   const isCurrentMonthView = viewYear === now.getFullYear() && viewMonth === now.getMonth()
 
-  // Upcoming holidays this month
   const todayStr = toYMD(new Date())
   const upcomingHolidays = holidays
     .filter(h => {
@@ -517,68 +544,62 @@ export default function EmployeeCalendar({ empId, holidays: propHolidays, myLeav
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
       {/* Month nav */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 16px', borderRadius: 14,
-        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-      }}>
-        <button onClick={goToPrevMonth} style={{
-          width: 36, height: 36, borderRadius: 9999, border: '1px solid var(--card-border)',
-          background: 'var(--surface2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--text-secondary)',
-        }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+        <button
+          onClick={goToPrevMonth}
+          disabled={isPrevDisabled}
+          style={{ width: 36, height: 36, borderRadius: 9999, border: '1px solid var(--card-border)', background: 'var(--surface2)', cursor: isPrevDisabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isPrevDisabled ? 'var(--text-muted)' : 'var(--text-secondary)', opacity: isPrevDisabled ? 0.35 : 1 }}
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
 
         <div style={{ textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--text-primary)' }}>
+          <button
+            onClick={() => setShowPicker(true)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 17, fontWeight: 800, color: 'var(--text-primary)', padding: '2px 8px', borderRadius: 8 }}
+          >
             {MONTH_NAMES[viewMonth]} {viewYear}
-          </p>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#1AABDB' }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
           {!isCurrentMonthView && (
-            <button onClick={goToToday} style={{
-              fontSize: 11, fontWeight: 600, color: '#1AABDB', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0',
-            }}>Back to today</button>
+            <button onClick={goToToday} style={{ fontSize: 11, fontWeight: 600, color: '#1AABDB', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0' }}>
+              Back to today
+            </button>
           )}
         </div>
 
-        <button onClick={goToNextMonth} style={{
-          width: 36, height: 36, borderRadius: 9999, border: '1px solid var(--card-border)',
-          background: 'var(--surface2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--text-secondary)',
-        }}>
+        <button onClick={goToNextMonth} style={{ width: 36, height: 36, borderRadius: 9999, border: '1px solid var(--card-border)', background: 'var(--surface2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
 
-      {/* Monthly summary */}
-      <MonthlySummary days={days} settings={settings} />
+      {showPicker && (
+        <MonthYearPicker
+          viewYear={viewYear}
+          viewMonth={viewMonth}
+          onChange={(year, month) => { setViewYear(year); setViewMonth(month) }}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
 
       {/* Calendar grid */}
-      <div style={{
-        borderRadius: 14, overflow: 'hidden',
-        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-      }}>
-        {/* Day headers */}
+      <div style={{ borderRadius: 14, overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--card-border)' }}>
           {DAY_LABELS.map(d => {
             const isNonWorking = !workingDayNums.includes(DAY_LABELS.indexOf(d) === 0 ? 0 : DAY_LABELS.indexOf(d))
             return (
-              <div key={d} style={{
-                textAlign: 'center', padding: '10px 0',
-                fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
-                color: isNonWorking ? '#94A3B8' : 'var(--text-secondary)',
-              }}>
+              <div key={d} style={{ textAlign: 'center', padding: '7px 0', fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', color: isNonWorking ? '#94A3B8' : 'var(--text-secondary)' }}>
                 {d}
               </div>
             )
           })}
         </div>
-
-        {/* Day cells */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, padding: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, padding: 4 }}>
           {days.map((day, i) => (
             <CalendarCell key={i} dayData={day} onClick={setSelectedDay} />
           ))}
@@ -590,63 +611,40 @@ export default function EmployeeCalendar({ empId, holidays: propHolidays, myLeav
 
       {/* Office settings info */}
       {settings && (
-        <div style={{
-          padding: '12px 14px', borderRadius: 12,
-          background: 'rgba(26,171,219,0.05)', border: '1px solid rgba(26,171,219,0.12)',
-          fontSize: 12, color: 'var(--text-secondary)',
-          display: 'flex', flexWrap: 'wrap', gap: '6px 16px',
-        }}>
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(26,171,219,0.05)', border: '1px solid rgba(26,171,219,0.12)', fontSize: 12, color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
           <span>🕘 Shift: <strong style={{ color: 'var(--text-primary)' }}>{settings.checkInTime} – {settings.checkOutTime}</strong></span>
           <span>⚠️ Late after: <strong style={{ color: '#F59E0B' }}>{settings.lateAfter}</strong></span>
           <span>📅 Working: <strong style={{ color: 'var(--text-primary)' }}>{settings.workingDays}</strong></span>
         </div>
       )}
 
-      {/* Upcoming holidays in this month */}
+      {/* Upcoming holidays */}
       {upcomingHolidays.length > 0 && (
         <div style={{ borderRadius: 14, overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--card-border)' }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-              🗓 Upcoming Holidays
-            </p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>🗓 Upcoming Holidays</p>
           </div>
           {upcomingHolidays.map((h, i) => {
             const c = HOLIDAY_TYPE_COLORS[h.type] || HOLIDAY_TYPE_COLORS.National
             const d = new Date(h.date)
             return (
-              <div key={h.id} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '12px 16px',
-                borderBottom: i < upcomingHolidays.length - 1 ? '1px solid var(--card-border)' : 'none',
-              }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  background: c.bg, border: `1px solid ${c.border}`,
-                }}>
+              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < upcomingHolidays.length - 1 ? '1px solid var(--card-border)' : 'none' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: c.bg, border: `1px solid ${c.border}` }}>
                   <span style={{ fontSize: 13, fontWeight: 800, color: c.color, lineHeight: 1 }}>{d.getDate()}</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: c.color, lineHeight: 1.3 }}>
-                    {d.toLocaleDateString('en-IN', { month: 'short' }).toUpperCase()}
-                  </span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: c.color, lineHeight: 1.3 }}>{d.toLocaleDateString('en-IN', { month: 'short' }).toUpperCase()}</span>
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{h.name}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
-                    {d.toLocaleDateString('en-IN', { weekday: 'long' })}
-                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{d.toLocaleDateString('en-IN', { weekday: 'long' })}</p>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 9999, background: c.bg, color: c.color, border: `1px solid ${c.border}`, flexShrink: 0 }}>
-                  {h.type}
-                </span>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 9999, background: c.bg, color: c.color, border: `1px solid ${c.border}`, flexShrink: 0 }}>{h.type}</span>
               </div>
             )
           })}
         </div>
       )}
 
-      {/* Day detail sheet */}
       {selectedDay && <DaySheet day={selectedDay} onClose={() => setSelectedDay(null)} />}
-
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
     </div>
   )
