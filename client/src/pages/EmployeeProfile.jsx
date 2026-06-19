@@ -99,14 +99,7 @@ function EmployeeProfile() {
     }
   }
 
-  const projectStatusStyle = (status) => {
-    if (!status) return null
-    const s = status.toLowerCase()
-    if (s === 'in progress') return { background: 'rgba(26,171,219,0.1)', color: '#1AABDB', border: '1px solid rgba(26,171,219,0.2)' }
-    if (s === 'completed') return { background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }
-    if (s === 'on hold') return { background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }
-    return { background: 'rgba(148,163,184,0.1)', color: '#94A3B8', border: '1px solid rgba(148,163,184,0.2)' }
-  }
+  
 
   if (loading) return <div style={{ fontSize: '0.875rem', padding: '32px', color: 'var(--text-secondary)' }}>Loading...</div>
   if (!employee) return <div style={{ fontSize: '0.875rem', padding: '32px', color: 'var(--text-secondary)' }}>Employee not found.</div>
@@ -267,22 +260,10 @@ function EmployeeProfile() {
               <InfoField label="Department" value={employee.department} />
               <InfoField label="Position" value={employee.position} />
               <InfoField label="Team Lead" value={employee.teamLead} />
-              <InfoField label="Project" value={employee.project} />
+              
             </div>
-            {employee.projectStatus && (
-              <div style={{ marginTop: '12px', padding: '0 12px' }}>
-                <p style={{ fontSize: '0.75rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-secondary)', margin: '0 0 8px' }}>
-                  Project Status
-                </p>
-                <span style={{
-                  fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px',
-                  borderRadius: '9999px', ...projectStatusStyle(employee.projectStatus)
-                }}>
-                  {employee.projectStatus}
-                </span>
-              </div>
-            )}
           </div>
+          
 
           {/* Daily work status */}
           {employee.dailyWorkStatus && (

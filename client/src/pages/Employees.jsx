@@ -10,29 +10,6 @@ const EMPTY_FORM = {
 
 const DEPARTMENTS = ['Engineering', 'HR', 'Sales', 'Marketing', 'Finance', 'IT', 'Operations', 'Other']
 
-const STATUS_COLORS = {
-  'Not Started': { bg: 'rgba(100,116,139,0.1)', text: '#64748b', dot: '#94a3b8' },
-  'Started':     { bg: 'rgba(59,130,246,0.1)',  text: '#3b82f6', dot: '#3b82f6' },
-  'In Progress': { bg: 'rgba(245,158,11,0.1)',  text: '#d97706', dot: '#f59e0b' },
-  'In Review':   { bg: 'rgba(168,85,247,0.1)',  text: '#9333ea', dot: '#a855f7' },
-  'Completed':   { bg: 'rgba(16,185,129,0.1)',  text: '#059669', dot: '#10b981' },
-  'Blocked':     { bg: 'rgba(239,68,68,0.1)',   text: '#dc2626', dot: '#ef4444' },
-}
-
-function StatusPill({ status }) {
-  if (!status) return null
-  const c = STATUS_COLORS[status] || STATUS_COLORS['Not Started']
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '2px 8px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
-      background: c.bg, color: c.text,
-    }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: c.dot }} />
-      {status}
-    </span>
-  )
-}
 
 function ChevronDown({ size = 14 }) {
   return (
@@ -427,12 +404,12 @@ function Employees() {
 
           {!isMobile && (
             <div style={{
-              display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr auto',
+              display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr auto',
               gap: 16, padding: '12px 20px', fontSize: 12, fontWeight: 600,
               background: 'var(--surface2)', borderBottom: '1px solid var(--card-border)', color: 'var(--text-secondary)',
             }}>
               <span>Employee</span><span>Department</span><span>Position</span>
-              <span>Joining</span><span>Project Status</span><span />
+              <span>Joining</span><span />
             </div>
           )}
 
@@ -447,7 +424,7 @@ function Employees() {
                 {!isMobile && (
                   <div
                     style={{
-                      display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr auto',
+                      display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr auto',
                       gap: 16, alignItems: 'center', padding: '14px 20px', cursor: 'pointer',
                       background: isExpanded ? 'var(--surface2)' : 'transparent', transition: 'background 0.15s',
                     }}
@@ -475,7 +452,7 @@ function Employees() {
                     <span style={{ fontSize: 14, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.department || '—'}</span>
                     <span style={{ fontSize: 14, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.position || '—'}</span>
                     <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{formatDate(emp.joiningDate)}</span>
-                    <div><StatusPill status={emp.projectStatus} /></div>
+                    
                     <span style={{
                       color: 'var(--text-muted)', flexShrink: 0,
                       transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'flex',
@@ -511,7 +488,7 @@ function Employees() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      {emp.projectStatus && <StatusPill status={emp.projectStatus} />}
+                      
                       <span style={{
                         color: 'var(--text-muted)',
                         transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'flex',
