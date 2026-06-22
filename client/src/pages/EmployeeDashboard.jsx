@@ -12,16 +12,11 @@ function EmployeeDashboard() {
   const [loading, setLoading] = useState(true)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
-  const [workStatus, setWorkStatus] = useState('')
-  const [currentWorkStatus, setCurrentWorkStatus] = useState('')
-  const [eodSubmitting, setEodSubmitting] = useState(false)
-  const [eodSuccess, setEodSuccess] = useState('')
-  const [eodError, setEodError] = useState('')
+  
 
   useEffect(() => {
     if (!employee) { navigate('/employee/login'); return }
     fetchStats()
-    fetchCurrentWorkStatus()
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
@@ -45,34 +40,6 @@ function EmployeeDashboard() {
       console.error('Failed to fetch stats', err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchCurrentWorkStatus = async () => {
-    try {
-      const res = await axios.get(`${BASE_URL}/api/employees/${employee.empId}`)
-      setCurrentWorkStatus(res.data.dailyWorkStatus || '')
-      setWorkStatus(res.data.dailyWorkStatus || '')
-    } catch {}
-  }
-
-  const handleEodSubmit = async (e) => {
-    e.preventDefault()
-    if (!workStatus.trim()) return
-    setEodSubmitting(true)
-    setEodSuccess('')
-    setEodError('')
-    try {
-      await axios.patch(`${BASE_URL}/api/employees/${employee.empId}/workstatus`, {
-        dailyWorkStatus: workStatus.trim()
-      })
-      setCurrentWorkStatus(workStatus.trim())
-      setEodSuccess('Work status updated successfully!')
-      setTimeout(() => setEodSuccess(''), 3000)
-    } catch (err) {
-      setEodError(err.response?.data?.error || 'Failed to update work status')
-    } finally {
-      setEodSubmitting(false)
     }
   }
 
@@ -110,10 +77,6 @@ function EmployeeDashboard() {
       action: () => navigate('/employee/attendance'),
     },
   ]
-
-  const now = new Date()
-  const hour = now.getHours()
-  const isEodTime = hour >= 16
 
   return (
     <div style={{ maxWidth: '100%', overflowX: 'hidden' }}>
@@ -234,117 +197,6 @@ function EmployeeDashboard() {
             </p>
           </div>
         ))}
-      </div>
-
-      {/* EOD Work Status */}
-      <div style={{
-        borderRadius: '24px',
-        padding: '24px',
-        marginBottom: isMobile ? '24px' : '32px',
-        transition: 'all 0.2s',
-        background: isEodTime
-          ? 'linear-gradient(135deg, rgba(26,171,219,0.08), rgba(26,171,219,0.03))'
-          : 'var(--card-bg)',
-        border: isEodTime
-          ? '1px solid rgba(26,171,219,0.25)'
-          : '1px solid var(--card-border)'
-      }}>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '40px', height: '40px', borderRadius: '16px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, background: 'rgba(26,171,219,0.1)'
-            }}>
-              <span style={{ fontSize: '1.125rem' }}>📋</span>
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <h3 style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)', margin: 0 }}>
-                End of Day Work Status
-              </h3>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                {isEodTime ? '⏰ Time to submit your EOD update!' : 'Update what you worked on today'}
-              </p>
-            </div>
-          </div>
-          {currentWorkStatus && (
-            <span style={{
-              fontSize: '0.75rem', padding: '4px 8px', borderRadius: '9999px',
-              fontWeight: 600, flexShrink: 0, marginLeft: '8px',
-              background: 'rgba(34,197,94,0.1)', color: '#22C55E'
-            }}>
-              ✓ Submitted
-            </span>
-          )}
-        </div>
-
-        {currentWorkStatus && (
-          <div style={{
-            borderRadius: '16px', padding: '12px 16px', marginBottom: '16px',
-            background: 'rgba(26,171,219,0.06)', border: '1px solid rgba(26,171,219,0.15)'
-          }}>
-            <p style={{ fontSize: '0.75rem', fontWeight: 500, marginBottom: '4px', color: '#1AABDB', margin: '0 0 4px' }}>
-              Current status
-            </p>
-            <p style={{ fontSize: '0.875rem', fontStyle: 'italic', wordBreak: 'break-word', color: 'var(--text-secondary)', margin: 0 }}>
-              "{currentWorkStatus}"
-            </p>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <textarea
-            value={workStatus}
-            onChange={e => setWorkStatus(e.target.value)}
-            placeholder="e.g. Completed the login module, reviewed PRs, attended standup..."
-            rows={3}
-            style={{
-              width: '100%', borderRadius: '16px', padding: '12px 16px',
-              fontSize: '0.875rem', outline: 'none', resize: 'none',
-              transition: 'border-color 0.2s', boxSizing: 'border-box',
-              background: 'var(--input-bg)', border: '1px solid var(--input-border)',
-              color: 'var(--text-primary)'
-            }}
-          />
-
-          {eodSuccess && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '10px 16px', borderRadius: '16px', fontSize: '0.875rem',
-              background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)'
-            }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-              {eodSuccess}
-            </div>
-          )}
-
-          {eodError && (
-            <div style={{
-              padding: '10px 16px', borderRadius: '16px', fontSize: '0.875rem',
-              background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)'
-            }}>
-              {eodError}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleEodSubmit}
-            disabled={eodSubmitting || !workStatus.trim()}
-            style={{
-              width: '100%', padding: '10px', borderRadius: '16px',
-              fontSize: '0.875rem', fontWeight: 600, color: '#fff',
-              border: 'none', transition: 'background 0.2s',
-              background: eodSubmitting || !workStatus.trim() ? 'rgba(26,171,219,0.4)' : '#1AABDB',
-              cursor: eodSubmitting || !workStatus.trim() ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {eodSubmitting ? 'Submitting...' : currentWorkStatus ? 'Update Status' : 'Submit EOD Status'}
-          </button>
-        </div>
       </div>
 
       {/* Quick action cards */}

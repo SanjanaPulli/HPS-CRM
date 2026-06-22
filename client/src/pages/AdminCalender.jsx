@@ -10,7 +10,9 @@ const DAY_LABELS_FULL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
 function toYMD(date) {
   if (!date) return ''
-  const d = new Date(date)
+  // Strip Z/UTC offset so it's treated as local time
+  const clean = date.toString().replace('Z', '').replace('+00:00', '')
+  const d = new Date(clean)
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
@@ -366,6 +368,17 @@ function ActionBtn({ children, onClick, disabled, color }) {
     </button>
   )
 }
+function SummaryChip({ children, color, bg, border }) {
+  return (
+    <span style={{
+      fontSize: 11, fontWeight: 600, padding: '3px 10px',
+      borderRadius: 9999, background: bg, color: color,
+      border: `1px solid ${border}`,
+    }}>
+      {children}
+    </span>
+  )
+}
 
 // ─── Calendar Cell ────────────────────────────────────────────────────────────
 
@@ -588,7 +601,7 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
 
   useEffect(() => {
     Promise.all([
-      axios.get(`${BASE_URL}/api/attendance`).catch(() => ({ data: [] })),
+      axios.get(`${BASE_URL}/api/attendance?all=true`).catch(() => ({ data: [] })),
       axios.get(`${BASE_URL}/api/holidays`).catch(() => ({ data: [] })),
       axios.get(`${BASE_URL}/api/settings`).catch(() => ({ data: {} })),
     ]).then(([attRes, holRes, settingsRes]) => {
@@ -601,9 +614,14 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
 
   const workingDayNums = parseDays(settings?.workingDays || 'Mon,Tue,Wed,Thu,Fri,Sat')
 
+  // AFTER (fixed - strip timezone before parsing)
   const attMap = {}
   attendance.forEach(a => {
-    const key = toYMD(a.checkInTime || a.timestamp)
+    const raw = a.checkInTime || a.timestamp
+    if (!raw) return
+    // Treat stored time as local (IST), not UTC
+    const clean = raw.toString().replace('Z', '').replace('+00:00', '')
+    const key = toYMD(new Date(clean))
     if (!attMap[key]) attMap[key] = []
     attMap[key].push(a)
   })
@@ -613,8 +631,10 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
 
   const leaveMap = {}
   ;(allLeaves || []).forEach(l => {
-    const from = new Date(l.fromDate || l.date)
-    const to   = new Date(l.toDate   || l.date)
+    const fromRaw = (l.fromDate || l.date || '').toString().replace('Z','').replace('+00:00','')
+    const toRaw   = (l.toDate   || l.date || '').toString().replace('Z','').replace('+00:00','')
+    const from = new Date(fromRaw)
+    const to   = new Date(toRaw)
     for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
       const key = toYMD(d)
       if (!leaveMap[key]) leaveMap[key] = []
