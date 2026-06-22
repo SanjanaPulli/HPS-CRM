@@ -6,6 +6,15 @@
   --hps-light: #E8F7FC;
 }
 
+html, body, #root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 #qr-reader__dashboard { display: none !important; }
 #qr-reader__scan_region { border: none !important; background: transparent !important; }
 #qr-reader img { display: none !important; }

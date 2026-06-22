@@ -5,7 +5,8 @@ import BASE_URL from '../config'
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
-const DAY_LABELS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const DAY_LABELS  = ['S','M','T','W','T','F','S']
+const DAY_LABELS_FULL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
 function toYMD(date) {
   if (!date) return ''
@@ -48,23 +49,22 @@ function resolveLeaveType(leave) {
   return 'Leave'
 }
 
-// Returns true if the given year/month is before the current month
 function isBeforeCurrentMonth(year, month) {
   const now = new Date()
   return year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth())
 }
 
 const HOLIDAY_COLORS = {
-  National: { color: '#DC2626', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.2)'   },
-  Optional: { color: '#D97706', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.2)'  },
-  Company:  { color: '#7C3AED', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.2)'  },
+  National: { color: '#DC2626', bg: 'rgba(220,38,38,0.08)',  border: 'rgba(220,38,38,0.18)'  },
+  Optional: { color: '#D97706', bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.18)'  },
+  Company:  { color: '#7C3AED', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.18)' },
 }
 
 const LEAVE_TYPE_COLORS = {
-  Leave:      { color: '#64748B', bg: 'rgba(100,116,139,0.12)', border: 'rgba(100,116,139,0.2)' },
-  WFH:        { color: '#1AABDB', bg: 'rgba(26,171,219,0.12)',  border: 'rgba(26,171,219,0.2)'  },
-  Permission: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.2)'  },
-  'On Duty':  { color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.2)'  },
+  Leave:      { color: '#64748B', bg: 'rgba(100,116,139,0.1)', border: 'rgba(100,116,139,0.2)' },
+  WFH:        { color: '#0EA5E9', bg: 'rgba(14,165,233,0.1)',  border: 'rgba(14,165,233,0.2)'  },
+  Permission: { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.2)'  },
+  'On Duty':  { color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.2)'  },
 }
 
 // ─── Day Detail Sheet ─────────────────────────────────────────────────────────
@@ -95,67 +95,88 @@ function AdminDaySheet({ dayData, onClose, onUpdateLeave }) {
     }
   }
 
+  const presentCount = attendances.filter(a => a.status === 'Present').length
+  const lateCount    = attendances.filter(a => a.status === 'Late').length
+
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}
       onClick={onClose}
     >
       <div
-        style={{ width: '100%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '24px 24px 0 0', background: 'var(--card-bg)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        style={{
+          width: '100%',
+          maxHeight: '88vh',
+          overflowY: 'auto',
+          borderRadius: '20px 20px 0 0',
+          background: 'var(--card-bg)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
+        }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-          <div style={{ width: 40, height: 4, borderRadius: 9999, background: 'var(--card-border)' }} />
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 9999, background: 'var(--card-border)' }} />
         </div>
 
         {/* Header */}
-        <div style={{ padding: '14px 20px 12px', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--text-primary)' }}>{dateStr}</p>
-              {isToday && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'rgba(26,171,219,0.15)', color: '#1AABDB' }}>Today</span>}
+        <div style={{ padding: '12px 20px 14px', borderBottom: '1px solid var(--card-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>{dateStr}</p>
+                {isToday && (
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: 'rgba(14,165,233,0.12)', color: '#0EA5E9', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Today
+                  </span>
+                )}
+              </div>
+
+              {/* Summary row */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                {presentCount > 0 && (
+                  <SummaryChip color="#10B981" bg="rgba(16,185,129,0.08)" border="rgba(16,185,129,0.18)">
+                    {presentCount} Present
+                  </SummaryChip>
+                )}
+                {lateCount > 0 && (
+                  <SummaryChip color="#F59E0B" bg="rgba(245,158,11,0.08)" border="rgba(245,158,11,0.18)">
+                    {lateCount} Late
+                  </SummaryChip>
+                )}
+                {pendingLeaves.length > 0 && (
+                  <SummaryChip color="#F59E0B" bg="rgba(245,158,11,0.08)" border="rgba(245,158,11,0.18)">
+                    {pendingLeaves.length} Pending
+                  </SummaryChip>
+                )}
+                {approvedLeaves.length > 0 && (
+                  <SummaryChip color="#64748B" bg="rgba(100,116,139,0.08)" border="rgba(100,116,139,0.18)">
+                    {approvedLeaves.length} On Leave
+                  </SummaryChip>
+                )}
+              </div>
             </div>
-            {/* Summary chips */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-              {attendances.filter(a => a.status === 'Present').length > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'rgba(16,185,129,0.1)', color: '#10B981' }}>
-                  ✓ {attendances.filter(a => a.status === 'Present').length} Present
-                </span>
-              )}
-              {attendances.filter(a => a.status === 'Late').length > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'rgba(245,158,11,0.1)', color: '#F59E0B' }}>
-                  ⚠ {attendances.filter(a => a.status === 'Late').length} Late
-                </span>
-              )}
-              {pendingLeaves.length > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'rgba(245,158,11,0.1)', color: '#F59E0B' }}>
-                  ⏳ {pendingLeaves.length} Pending
-                </span>
-              )}
-              {approvedLeaves.length > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'rgba(16,185,129,0.1)', color: '#10B981' }}>
-                  {approvedLeaves.length} On Leave/WFH/OD
-                </span>
-              )}
-            </div>
+
+            <button
+              onClick={onClose}
+              style={{ background: 'var(--surface2)', border: 'none', cursor: 'pointer', borderRadius: 9999, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexShrink: 0 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
-          <button onClick={onClose} style={{ background: 'var(--surface2)', border: 'none', cursor: 'pointer', borderRadius: 9999, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
         </div>
 
-        <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* Holiday banner */}
           {holiday && (() => {
             const c = HOLIDAY_COLORS[holiday.type] || HOLIDAY_COLORS.National
             return (
-              <div style={{ padding: '12px 14px', borderRadius: 12, background: c.bg, border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 20 }}>🎉</span>
+              <div style={{ padding: '14px 16px', borderRadius: 12, background: c.bg, border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 22 }}>🎉</span>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: c.color }}>{holiday.name}</p>
-                  <p style={{ margin: 0, fontSize: 12, color: c.color, opacity: 0.8 }}>{holiday.type} Holiday</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: c.color, opacity: 0.75 }}>{holiday.type} Holiday</p>
                 </div>
               </div>
             )
@@ -163,118 +184,120 @@ function AdminDaySheet({ dayData, onClose, onUpdateLeave }) {
 
           {/* Weekend */}
           {isWeekend && !holiday && (
-            <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(148,163,184,0.07)', border: '1px solid rgba(148,163,184,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: '12px 16px', borderRadius: 12, background: 'var(--surface2)', border: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 16 }}>😴</span>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Non-working day</p>
             </div>
           )}
 
-          {/* Pending leaves — with approve/reject */}
+          {/* Pending leaves */}
           {pendingLeaves.length > 0 && (
-            <div>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>⏳ Pending Approval</p>
+            <section>
+              <SectionLabel color="#F59E0B">Pending Approval</SectionLabel>
               {pendingLeaves.map(l => {
                 const type = resolveLeaveType(l)
                 const cfg  = LEAVE_TYPE_COLORS[type] || LEAVE_TYPE_COLORS.Leave
                 return (
-                  <div key={l.id} style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 8, flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#1AABDB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                          {l.employee?.name?.charAt(0)}
-                        </div>
-                        <div>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{l.employee?.name}</p>
-                          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>{l.empId}</p>
-                        </div>
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>{type}</span>
+                  <div key={l.id} style={{ padding: '14px', borderRadius: 12, background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.18)', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
+                      <EmployeeBadge name={l.employee?.name} empId={l.empId} />
+                      <TypePill cfg={cfg} type={type} />
                     </div>
-                    <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-secondary)' }}>{l.reason}</p>
+                    {l.reason && <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{l.reason}</p>}
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button disabled={updating === l.id} onClick={() => handleStatus(l.id, 'Approved')} style={{ flex: 1, padding: '7px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, background: '#10B981', color: '#fff', opacity: updating === l.id ? 0.5 : 1 }}>✓ Approve</button>
-                      <button disabled={updating === l.id} onClick={() => handleStatus(l.id, 'Rejected')} style={{ flex: 1, padding: '7px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, background: '#EF4444', color: '#fff', opacity: updating === l.id ? 0.5 : 1 }}>✕ Reject</button>
+                      <ActionBtn
+                        disabled={updating === l.id}
+                        onClick={() => handleStatus(l.id, 'Approved')}
+                        color="#10B981"
+                      >
+                        Approve
+                      </ActionBtn>
+                      <ActionBtn
+                        disabled={updating === l.id}
+                        onClick={() => handleStatus(l.id, 'Rejected')}
+                        color="#EF4444"
+                      >
+                        Reject
+                      </ActionBtn>
                     </div>
                   </div>
                 )
               })}
-            </div>
+            </section>
           )}
 
-          {/* Attendance list */}
+          {/* Attendance */}
           {attendances.length > 0 && (
-            <div>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Attendance</p>
+            <section>
+              <SectionLabel>Attendance</SectionLabel>
               {attendances.map(a => {
                 const statusColor = a.status === 'Present' ? '#10B981' : a.status === 'Late' ? '#F59E0B' : '#EF4444'
-                const statusBg    = a.status === 'Present' ? 'rgba(16,185,129,0.1)' : a.status === 'Late' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)'
+                const statusBg    = a.status === 'Present' ? 'rgba(16,185,129,0.08)' : a.status === 'Late' ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)'
                 return (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--card-border)', marginBottom: 6 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#1AABDB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                      {a.employee?.name?.charAt(0) || a.empId?.charAt(0)}
-                    </div>
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--card-border)', marginBottom: 6 }}>
+                    <Avatar name={a.employee?.name || a.empId} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {a.employee?.name || a.empId}
                       </p>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
-                        {fmtTime(a.checkInTime)  && <span style={{ fontSize: 11, color: '#10B981', fontWeight: 600 }}>In: {fmtTime(a.checkInTime)}</span>}
-                        {fmtTime(a.checkOutTime) && <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>Out: {fmtTime(a.checkOutTime)}</span>}
-                        {a.hoursWorked != null   && <span style={{ fontSize: 11, color: '#1AABDB', fontWeight: 600 }}>{fmtHours(a.hoursWorked)}</span>}
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 3 }}>
+                        {fmtTime(a.checkInTime)  && <TimeTag label="In"  value={fmtTime(a.checkInTime)}  color="#10B981" />}
+                        {fmtTime(a.checkOutTime) && <TimeTag label="Out" value={fmtTime(a.checkOutTime)} color="#64748B" />}
+                        {a.hoursWorked != null   && <span style={{ fontSize: 11, color: '#0EA5E9', fontWeight: 600 }}>{fmtHours(a.hoursWorked)}</span>}
                         {a.overtimeMinutes > 0   && <span style={{ fontSize: 11, color: '#8B5CF6', fontWeight: 600 }}>+{a.overtimeMinutes}m OT</span>}
                       </div>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 9999, background: statusBg, color: statusColor, flexShrink: 0 }}>{a.status}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 9999, background: statusBg, color: statusColor, flexShrink: 0 }}>{a.status}</span>
                   </div>
                 )
               })}
-            </div>
+            </section>
           )}
 
-          {/* Approved leaves — shown as Leave/WFH/OD, never "Absent" */}
+          {/* Approved leaves */}
           {approvedLeaves.length > 0 && (
-            <div>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>On Leave / WFH / OD</p>
+            <section>
+              <SectionLabel>On Leave / WFH / On Duty</SectionLabel>
               {approvedLeaves.map(l => {
                 const type = resolveLeaveType(l)
                 const cfg  = LEAVE_TYPE_COLORS[type] || LEAVE_TYPE_COLORS.Leave
                 const hrs  = calcHours(l.fromTime, l.toTime)
                 return (
-                  <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: cfg.bg, border: `1px solid ${cfg.border}`, marginBottom: 6 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: cfg.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                      {l.employee?.name?.charAt(0)}
-                    </div>
+                  <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', borderRadius: 10, background: cfg.bg, border: `1px solid ${cfg.border}`, marginBottom: 6 }}>
+                    <Avatar name={l.employee?.name} color={cfg.color} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {l.employee?.name}
                       </p>
-                      <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>{l.reason}</p>
-                      {hrs && <p style={{ margin: '2px 0 0', fontSize: 11, color: cfg.color, fontWeight: 600 }}>{l.fromTime} – {l.toTime} ({hrs})</p>}
+                      {l.reason && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>{l.reason}</p>}
+                      {hrs && <p style={{ margin: '3px 0 0', fontSize: 11, color: cfg.color, fontWeight: 600 }}>{l.fromTime} – {l.toTime} · {hrs}</p>}
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.3)', color: cfg.color, flexShrink: 0 }}>{type}</span>
+                    <TypePill cfg={cfg} type={type} />
                   </div>
                 )
               })}
-            </div>
+            </section>
           )}
 
           {/* Rejected leaves */}
           {rejectedLeaves.length > 0 && (
-            <div>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rejected</p>
+            <section>
+              <SectionLabel color="#EF4444">Rejected</SectionLabel>
               {rejectedLeaves.map(l => (
-                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 6, opacity: 0.7 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
-                    {l.employee?.name?.charAt(0)}
-                  </div>
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>{l.employee?.name} — {resolveLeaveType(l)} — {l.reason}</p>
+                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.12)', marginBottom: 6, opacity: 0.65 }}>
+                  <Avatar name={l.employee?.name} color="#EF4444" size={22} />
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
+                    <strong style={{ color: 'var(--text-primary)' }}>{l.employee?.name}</strong>
+                    {' · '}{resolveLeaveType(l)}
+                    {l.reason ? ` · ${l.reason}` : ''}
+                  </p>
                 </div>
               ))}
-            </div>
+            </section>
           )}
 
           {!holiday && !isWeekend && attendances.length === 0 && leaves.length === 0 && (
-            <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', padding: '16px 0' }}>No records for this day.</p>
+            <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', padding: '24px 0' }}>No records for this day.</p>
           )}
         </div>
       </div>
@@ -282,72 +305,125 @@ function AdminDaySheet({ dayData, onClose, onUpdateLeave }) {
   )
 }
 
+// ─── Small reusable atoms ─────────────────────────────────────────────────────
+
+function Avatar({ name, color = '#1AABDB', size = 28 }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: size * 0.4, fontWeight: 700, flexShrink: 0 }}>
+      {name?.charAt(0)?.toUpperCase() || '?'}
+    </div>
+  )
+}
+
+function EmployeeBadge({ name, empId }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <Avatar name={name} />
+      <div>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{name}</p>
+        {empId && <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>{empId}</p>}
+      </div>
+    </div>
+  )
+}
+
+function TypePill({ cfg, type }) {
+  return (
+    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 9999, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, flexShrink: 0 }}>
+      {type}
+    </span>
+  )
+}
+
+function SectionLabel({ children, color = 'var(--text-secondary)' }) {
+  return (
+    <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      {children}
+    </p>
+  )
+}
+
+function TimeTag({ label, value, color }) {
+  return (
+    <span style={{ fontSize: 11, color, fontWeight: 600 }}>
+      <span style={{ opacity: 0.6, fontWeight: 500 }}>{label} </span>{value}
+    </span>
+  )
+}
+
+function ActionBtn({ children, onClick, disabled, color }) {
+  return (
+    <button
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        flex: 1, padding: '9px', borderRadius: 9, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
+        fontSize: 13, fontWeight: 700, background: color, color: '#fff',
+        opacity: disabled ? 0.5 : 1, letterSpacing: '0.01em',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
 // ─── Calendar Cell ────────────────────────────────────────────────────────────
 
 function AdminCalendarCell({ dayData, onClick }) {
-  if (!dayData) return <div style={{ aspectRatio: '1', minHeight: 48 }} />
+  if (!dayData) return <div style={{ aspectRatio: '1' }} />
 
   const { dayNum, isCurrentMonth, isToday, isWeekend, holiday, attendances, leaves } = dayData
 
-  const presentCount  = attendances.filter(a => a.status === 'Present').length
-  const lateCount     = attendances.filter(a => a.status === 'Late').length
-  const onLeaveCount  = leaves.filter(l => l.status === 'Approved').length
-  const pendingCount  = leaves.filter(l => l.status === 'Pending').length
+  const presentCount = attendances.filter(a => a.status === 'Present').length
+  const lateCount    = attendances.filter(a => a.status === 'Late').length
+  const onLeaveCount = leaves.filter(l => l.status === 'Approved').length
+  const pendingCount = leaves.filter(l => l.status === 'Pending').length
+  const hasActivity  = isCurrentMonth && !holiday && !isWeekend && (presentCount + lateCount + onLeaveCount + pendingCount > 0)
 
   const isHoliday = !!holiday
   const hc = holiday ? (HOLIDAY_COLORS[holiday.type] || HOLIDAY_COLORS.National) : null
 
   let cellBg = 'transparent'
-  if (isHoliday)   cellBg = hc.bg
-  else if (isWeekend) cellBg = 'rgba(148,163,184,0.05)'
+  if (isHoliday) cellBg = hc.bg
+  else if (isWeekend) cellBg = 'rgba(148,163,184,0.04)'
+
+  // Dot indicators — max 3 dots, each color represents a category
+  const dots = []
+  if (presentCount > 0 || lateCount > 0) dots.push(lateCount > 0 ? '#F59E0B' : '#10B981')
+  if (onLeaveCount > 0) dots.push('#64748B')
+  if (pendingCount > 0) dots.push('#F59E0B')
 
   return (
     <button
       onClick={() => onClick(dayData)}
       style={{
-        aspectRatio: '1', minHeight: 48,
+        aspectRatio: '1',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 3, borderRadius: 10, position: 'relative',
+        gap: 4, borderRadius: 8, position: 'relative',
         border: isToday ? '2px solid #1AABDB' : '1px solid transparent',
-        background: cellBg,
-        cursor: 'pointer', transition: 'all 0.15s',
-        opacity: isCurrentMonth ? 1 : 0.25,
-        padding: '4px 2px',
+        background: isToday ? 'rgba(14,165,233,0.06)' : cellBg,
+        cursor: 'pointer',
+        opacity: isCurrentMonth ? 1 : 0.2,
+        padding: '2px',
+        WebkitTapHighlightColor: 'transparent',
       }}
-      onMouseEnter={e => { if (!isHoliday) e.currentTarget.style.background = 'var(--surface2)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = cellBg }}
     >
       {/* Day number */}
       <span style={{
-        fontSize: 12, fontWeight: isToday ? 800 : 600, lineHeight: 1,
+        fontSize: 13,
+        fontWeight: isToday ? 800 : isCurrentMonth ? 500 : 400,
+        lineHeight: 1,
         color: isToday ? '#1AABDB' : isHoliday ? hc.color : isWeekend ? '#94A3B8' : 'var(--text-primary)',
       }}>
         {dayNum}
       </span>
 
-      {/* Clean count row — only for current month, non-holiday working days */}
-      {isCurrentMonth && !isHoliday && !isWeekend && (presentCount + lateCount + onLeaveCount + pendingCount > 0) && (
-        <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {presentCount > 0 && (
-            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 4, background: 'rgba(16,185,129,0.15)', color: '#10B981', lineHeight: 1.4 }}>
-              {presentCount}P
-            </span>
-          )}
-          {lateCount > 0 && (
-            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', lineHeight: 1.4 }}>
-              {lateCount}L
-            </span>
-          )}
-          {onLeaveCount > 0 && (
-            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 4, background: 'rgba(100,116,139,0.15)', color: '#64748B', lineHeight: 1.4 }}>
-              {onLeaveCount}Off
-            </span>
-          )}
-          {pendingCount > 0 && (
-            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', lineHeight: 1.4 }}>
-              {pendingCount}⏳
-            </span>
-          )}
+      {/* Dot cluster — compact, clean */}
+      {hasActivity && (
+        <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+          {dots.slice(0, 3).map((color, i) => (
+            <div key={i} style={{ width: 5, height: 5, borderRadius: 9999, background: color }} />
+          ))}
         </div>
       )}
 
@@ -356,67 +432,34 @@ function AdminCalendarCell({ dayData, onClick }) {
         <div style={{ width: 5, height: 5, borderRadius: 9999, background: hc.color }} />
       )}
 
-      {/* Pending indicator dot */}
+      {/* Pending badge — top-right corner */}
       {pendingCount > 0 && (
-        <div style={{ position: 'absolute', top: 4, right: 4, width: 6, height: 6, borderRadius: 9999, background: '#F59E0B' }} />
+        <div style={{
+          position: 'absolute', top: 3, right: 3,
+          width: 7, height: 7, borderRadius: 9999,
+          background: '#F59E0B',
+          border: '1.5px solid var(--card-bg)',
+        }} />
       )}
     </button>
-  )
-}
-
-// ─── Monthly Stats ────────────────────────────────────────────────────────────
-
-function MonthlyStats({ days }) {
-  let totalPresent = 0, totalLate = 0, totalLeave = 0, totalPending = 0, totalHolidays = 0
-  const todayStr = toYMD(new Date())
-
-  days.forEach(d => {
-    if (!d?.isCurrentMonth || d.date > todayStr) return
-    if (d.holiday) { totalHolidays++; return }
-    if (d.isWeekend) return
-    totalPresent  += d.attendances.filter(a => a.status === 'Present').length
-    totalLate     += d.attendances.filter(a => a.status === 'Late').length
-    totalLeave    += d.leaves.filter(l => l.status === 'Approved').length
-    totalPending  += d.leaves.filter(l => l.status === 'Pending').length
-  })
-
-  const items = [
-    { label: 'Present',     value: totalPresent,  color: '#10B981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.2)'  },
-    { label: 'Late',        value: totalLate,     color: '#F59E0B', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.2)'  },
-    { label: 'On Leave',    value: totalLeave,    color: '#64748B', bg: 'rgba(100,116,139,0.08)', border: 'rgba(100,116,139,0.2)' },
-    { label: 'Pending',     value: totalPending,  color: '#F59E0B', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.2)'  },
-    { label: 'Holidays',    value: totalHolidays, color: '#DC2626', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.2)'   },
-  ].filter(i => i.value > 0)
-
-  if (!items.length) return null
-
-  return (
-    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
-      {items.map(({ label, value, color, bg, border }) => (
-        <div key={label} style={{ flexShrink: 0, padding: '10px 14px', borderRadius: 12, background: bg, border: `1px solid ${border}`, textAlign: 'center', minWidth: 70 }}>
-          <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color }}>{value}</p>
-          <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color, opacity: 0.8, marginTop: 1 }}>{label}</p>
-        </div>
-      ))}
-    </div>
   )
 }
 
 // ─── Legend ──────────────────────────────────────────────────────────────────
 
 function Legend() {
+  const items = [
+    { dot: '#10B981', label: 'Present'       },
+    { dot: '#F59E0B', label: 'Late / Pending' },
+    { dot: '#64748B', label: 'On Leave'       },
+    { dot: '#DC2626', label: 'Holiday'        },
+    { dot: '#94A3B8', label: 'Non-working'    },
+  ]
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', paddingTop: 4 }}>
-      {[
-        { dot: '#10B981', label: 'P = Present'       },
-        { dot: '#F59E0B', label: 'L = Late'          },
-        { dot: '#64748B', label: 'Off = On Leave/WFH/OD' },
-        { dot: '#F59E0B', label: '⏳ = Pending'      },
-        { dot: '#DC2626', label: 'Holiday'           },
-        { dot: '#94A3B8', label: 'Non-working day'   },
-      ].map(({ dot, label }) => (
-        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 2, background: dot }} />
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
+      {items.map(({ dot, label }) => (
+        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 7, height: 7, borderRadius: 9999, background: dot }} />
           <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</span>
         </div>
       ))}
@@ -424,24 +467,23 @@ function Legend() {
   )
 }
 
-// ─── Month/Year Picker — with past month restriction ──────────────────────────
+// ─── Month/Year Picker ────────────────────────────────────────────────────────
 
 function MonthYearPicker({ viewYear, viewMonth, onChange, onClose }) {
   const [pickerYear, setPickerYear] = useState(viewYear)
   const now = new Date()
   const currentYear  = now.getFullYear()
   const currentMonth = now.getMonth()
-
   const canGoPrevYear = pickerYear > currentYear
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}
       onClick={onClose}
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: 300, borderRadius: 18, background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden' }}
+        style={{ width: '100%', maxWidth: 320, borderRadius: 18, background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}
       >
         {/* Year row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--card-border)', background: 'var(--surface2)' }}>
@@ -452,7 +494,7 @@ function MonthYearPicker({ viewYear, viewMonth, onChange, onClose }) {
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <strong style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>{pickerYear}</strong>
+          <strong style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{pickerYear}</strong>
           <button
             onClick={() => setPickerYear(y => y + 1)}
             style={{ width: 32, height: 32, borderRadius: 9999, border: '1px solid var(--card-border)', background: 'var(--card-bg)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
@@ -472,13 +514,13 @@ function MonthYearPicker({ viewYear, viewMonth, onChange, onClose }) {
                 disabled={isPast}
                 onClick={() => { onChange(pickerYear, idx); onClose() }}
                 style={{
-                  padding: '10px', border: 'none', borderRadius: 8,
+                  padding: '10px 6px', border: 'none', borderRadius: 8,
                   cursor: isPast ? 'not-allowed' : 'pointer',
-                  fontSize: 12, fontWeight: isSelected ? 800 : 500,
+                  fontSize: 13, fontWeight: isSelected ? 700 : 500,
                   background: isSelected ? '#1AABDB' : 'var(--surface2)',
                   color: isSelected ? '#fff' : isPast ? 'var(--text-muted)' : 'var(--text-primary)',
-                  opacity: isPast ? 0.35 : 1,
-                  transition: 'all 0.12s',
+                  opacity: isPast ? 0.3 : 1,
+                  transition: 'background 0.12s',
                 }}
               >
                 {month.slice(0, 3)}
@@ -506,21 +548,21 @@ function UpcomingHolidays({ holidays, viewYear, viewMonth }) {
 
   return (
     <div style={{ borderRadius: 14, overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-      <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--card-border)' }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>🗓 Holidays this month</p>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--card-border)' }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Holidays This Month</p>
       </div>
       {upcoming.map((h, i) => {
         const c = HOLIDAY_COLORS[h.type] || HOLIDAY_COLORS.National
         const d = new Date(h.date)
         return (
-          <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderBottom: i < upcoming.length - 1 ? '1px solid var(--card-border)' : 'none' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 9, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: c.bg, border: `1px solid ${c.border}` }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: c.color, lineHeight: 1 }}>{d.getDate()}</span>
-              <span style={{ fontSize: 8, fontWeight: 700, color: c.color, lineHeight: 1.3 }}>{d.toLocaleDateString('en-IN',{month:'short'}).toUpperCase()}</span>
+          <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < upcoming.length - 1 ? '1px solid var(--card-border)' : 'none' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: c.bg, border: `1px solid ${c.border}` }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: c.color, lineHeight: 1 }}>{d.getDate()}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: c.color, lineHeight: 1.4, letterSpacing: '0.03em' }}>{d.toLocaleDateString('en-IN',{month:'short'}).toUpperCase()}</span>
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{h.name}</p>
-              <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{d.toLocaleDateString('en-IN',{weekday:'long'})}</p>
+              <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{d.toLocaleDateString('en-IN',{weekday:'long'})}</p>
             </div>
             <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: c.bg, color: c.color, border: `1px solid ${c.border}`, flexShrink: 0 }}>{h.type}</span>
           </div>
@@ -608,7 +650,6 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
 
   const days = calendarDays()
 
-  // ── Navigation: future-only ──
   const isPrevDisabled = isBeforeCurrentMonth(
     viewMonth === 0 ? viewYear - 1 : viewYear,
     viewMonth === 0 ? 11 : viewMonth - 1
@@ -642,72 +683,80 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)', fontSize: 14 }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite', display: 'block', margin: '0 auto 8px' }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite', display: 'block', margin: '0 auto 10px' }}>
           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
         </svg>
-        Loading calendar…
-        <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+        Loading…
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* Month nav */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-        <button
-          onClick={goToPrev}
-          disabled={isPrevDisabled}
-          style={{ width: 36, height: 36, borderRadius: 9999, border: '1px solid var(--card-border)', background: 'var(--surface2)', cursor: isPrevDisabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isPrevDisabled ? 'var(--text-muted)' : 'var(--text-secondary)', opacity: isPrevDisabled ? 0.35 : 1 }}
-        >
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 16px', borderRadius: 14,
+        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+      }}>
+        <NavBtn onClick={goToPrev} disabled={isPrevDisabled}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
+        </NavBtn>
 
         <div style={{ textAlign: 'center' }}>
           <button
             onClick={() => setShowPicker(true)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 17, fontWeight: 800, color: 'var(--text-primary)' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}
           >
             {MONTH_NAMES[viewMonth]} {viewYear}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           {!isCurrentMonthView && (
-            <button onClick={goToToday} style={{ fontSize: 11, fontWeight: 600, color: '#1AABDB', background: 'none', border: 'none', cursor: 'pointer' }}>
+            <button onClick={goToToday} style={{ fontSize: 11, fontWeight: 600, color: '#1AABDB', background: 'none', border: 'none', cursor: 'pointer', marginTop: 2 }}>
               Back to today
             </button>
           )}
         </div>
 
-        <button onClick={goToNext} style={{ width: 36, height: 36, borderRadius: 9999, border: '1px solid var(--card-border)', background: 'var(--surface2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+        <NavBtn onClick={goToNext}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
+        </NavBtn>
       </div>
 
-      {/* Office settings bar */}
+      {/* Office info bar */}
       {settings?.checkInTime && (
-        <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(26,171,219,0.05)', border: '1px solid rgba(26,171,219,0.12)', fontSize: 12, color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
-          <span>🕘 Shift: <strong style={{ color: 'var(--text-primary)' }}>{settings.checkInTime} – {settings.checkOutTime}</strong></span>
-          <span>⚠️ Late after: <strong style={{ color: '#F59E0B' }}>{settings.lateAfter}</strong></span>
-          <span>📅 Working: <strong style={{ color: 'var(--text-primary)' }}>{settings.workingDays}</strong></span>
+        <div style={{
+          padding: '10px 14px', borderRadius: 12,
+          background: 'rgba(14,165,233,0.04)', border: '1px solid rgba(14,165,233,0.1)',
+          fontSize: 12, color: 'var(--text-secondary)',
+          display: 'flex', flexWrap: 'wrap', gap: '4px 16px',
+        }}>
+          <span>Shift <strong style={{ color: 'var(--text-primary)' }}>{settings.checkInTime} – {settings.checkOutTime}</strong></span>
+          <span>Late after <strong style={{ color: '#F59E0B' }}>{settings.lateAfter}</strong></span>
+          <span>Working days <strong style={{ color: 'var(--text-primary)' }}>{settings.workingDays}</strong></span>
         </div>
       )}
 
-      <MonthlyStats days={days} />
-
       {/* Calendar grid */}
       <div style={{ borderRadius: 14, overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+        {/* Day headers */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--card-border)' }}>
-          {DAY_LABELS.map((d, i) => {
+          {DAY_LABELS_FULL.map((label, i) => {
             const isNonWorking = !workingDayNums.includes(i === 0 ? 0 : i)
             return (
-              <div key={d} style={{ textAlign: 'center', padding: '10px 0', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', color: isNonWorking ? '#94A3B8' : 'var(--text-secondary)' }}>
-                {d}
+              <div key={label} style={{ textAlign: 'center', padding: '10px 0', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', color: isNonWorking ? '#94A3B8' : 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                {/* Show 3-letter on wider screens, 1-letter on very narrow — CSS media query via inline class trick */}
+                <span className="cal-day-label-full">{label}</span>
+                <span className="cal-day-label-short">{label.charAt(0)}</span>
               </div>
             )
           })}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, padding: 6 }}>
+
+        {/* Cells */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, padding: 4 }}>
           {days.map((day, i) => (
             <AdminCalendarCell key={i} dayData={day} onClick={setSelectedDay} />
           ))}
@@ -730,7 +779,36 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
         />
       )}
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
+
+        .cal-day-label-short { display: none; }
+        .cal-day-label-full  { display: inline; }
+
+        @media (max-width: 360px) {
+          .cal-day-label-full  { display: none; }
+          .cal-day-label-short { display: inline; }
+        }
+      `}</style>
     </div>
+  )
+}
+
+function NavBtn({ children, onClick, disabled }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: 36, height: 36, borderRadius: 9999,
+        border: '1px solid var(--card-border)', background: 'var(--surface2)',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: disabled ? 'var(--text-muted)' : 'var(--text-secondary)',
+        opacity: disabled ? 0.35 : 1,
+      }}
+    >
+      {children}
+    </button>
   )
 }

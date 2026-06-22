@@ -148,6 +148,90 @@ const TYPE_ACTIVE_COLORS = {
   'On Duty':  '#7C3AED',
 }
 
+// ── Mobile card — stacked layout, replaces table row on small screens ─────
+function LeaveCardMobile({ leave, onApprove, onReject, onDelete, updating }) {
+  const type     = resolveType(leave)
+  const fromDate = leave.fromDate || leave.date
+  const toDate   = leave.toDate   || leave.date
+  const isPerm   = type === 'Permission'
+  const isOD     = type === 'On Duty'
+  const hours    = (isPerm || isOD) ? calcHours(leave.fromTime, leave.toTime) : null
+  const hasTime  = !!(hours && leave.fromTime && leave.toTime)
+  const multiDay = !isPerm && fromDate !== toDate
+
+  return (
+    <div style={{ padding: 16, borderBottom: '1px solid var(--card-border)' }}>
+      {/* Top row: avatar, name, dept, status */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#1AABDB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+          {leave.employee?.name?.charAt(0)}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 1px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {leave.employee?.name}
+          </p>
+          <p style={{ fontSize: 11, margin: 0, color: 'var(--text-muted)' }}>
+            {leave.empId}{leave.employee?.department ? ` · ${leave.employee.department}` : ''}
+          </p>
+        </div>
+        <StatusBadge status={leave.status} />
+      </div>
+
+      {/* Date / time */}
+      <div style={{ marginBottom: 8 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, margin: '0 0 2px', color: 'var(--text-primary)' }}>
+          {formatDateIN(fromDate)}
+        </p>
+        {hasTime ? (
+          <p style={{ fontSize: 12, margin: 0, fontWeight: 600, color: isPerm ? '#D97706' : '#7C3AED' }}>
+            {leave.fromTime} – {leave.toTime}
+            <span style={{ marginLeft: 4, opacity: 0.7 }}>({hours})</span>
+          </p>
+        ) : multiDay ? (
+          <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>to {formatDateIN(toDate)}</p>
+        ) : (
+          <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>
+            {leave.isHalfDay ? `Half day · ${leave.halfDaySession}` : 'Full day'}
+          </p>
+        )}
+      </div>
+
+      {/* Type + days badges */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: leave.reason ? 8 : 12, flexWrap: 'wrap' }}>
+        <TypeBadge leave={leave} />
+        <DaysBadge leave={leave} />
+      </div>
+
+      {/* Reason */}
+      {leave.reason && (
+        <div style={{ marginBottom: 12 }}>
+          <ReasonCell reason={leave.reason} />
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {leave.status === 'Pending' ? (
+          <>
+            <button onClick={() => onApprove(leave.id)} disabled={updating === leave.id}
+              style={{ flex: 1, background: '#16a34a', color: '#fff', border: 'none', padding: '8px 0', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === leave.id ? 0.5 : 1 }}>
+              Approve
+            </button>
+            <button onClick={() => onReject(leave.id)} disabled={updating === leave.id}
+              style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '8px 0', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === leave.id ? 0.5 : 1 }}>
+              Reject
+            </button>
+          </>
+        ) : null}
+        <button onClick={() => onDelete(leave.id)}
+          style={{ flex: leave.status === 'Pending' ? '0 0 auto' : 1, background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)', padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Delete
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminLeave() {
   const [leaves, setLeaves]             = useState([])
   const [loading, setLoading]           = useState(true)
@@ -266,13 +350,13 @@ export default function AdminLeave() {
     <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: isMobile ? 20 : 24, gap: 12 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <div style={{ width: 4, height: 24, borderRadius: 999, background: '#1AABDB', flexShrink: 0 }} />
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Leave Requests</h1>
+            <h1 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Leave Requests</h1>
           </div>
-          <p style={{ fontSize: 14, margin: '0 0 0 12px', color: 'var(--text-secondary)' }}>
+          <p style={{ fontSize: isMobile ? 12 : 14, margin: '0 0 0 12px', color: 'var(--text-secondary)' }}>
             Manage leave, WFH, permission and on duty requests
           </p>
         </div>
@@ -295,18 +379,18 @@ export default function AdminLeave() {
       </div>
 
       {/* Stat pills */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 12, marginBottom: isMobile ? 16 : 24 }}>
         {statPills.map(s => (
           <button key={s.label} onClick={s.onClick}
             style={{
               background: s.bg, border: `1px solid ${s.border}`,
-              borderRadius: 16, padding: 16, textAlign: 'left',
+              borderRadius: 16, padding: isMobile ? 12 : 16, textAlign: 'left',
               cursor: 'pointer', transition: 'transform 0.15s', fontFamily: 'inherit',
             }}
             onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
             onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
             <p style={{ fontSize: 11, fontWeight: 500, margin: '0 0 4px', color: s.color, whiteSpace: 'nowrap' }}>{s.label}</p>
-            <p style={{ fontSize: 24, fontWeight: 700, margin: 0, color: s.color }}>{s.value}</p>
+            <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, margin: 0, color: s.color }}>{s.value}</p>
           </button>
         ))}
       </div>
@@ -314,17 +398,18 @@ export default function AdminLeave() {
       {/* Filter bar */}
       <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16, marginBottom: 20, overflow: 'hidden' }}>
         <div style={{
-          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
+          display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+          flexWrap: 'wrap', alignItems: isMobile ? 'stretch' : 'center', gap: 12,
           padding: '12px 16px',
           borderBottom: filtersOpen ? '1px solid var(--card-border)' : 'none',
         }}>
           {/* Status tabs */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', overflowX: isMobile ? 'auto' : 'visible', WebkitOverflowScrolling: 'touch' }}>
             {['All', 'Pending', 'Approved', 'Rejected'].map(f => (
               <button key={f} onClick={() => setStatusFilter(f)}
                 style={{
                   fontSize: 12, padding: '6px 12px', borderRadius: 8, fontWeight: 600,
-                  cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+                  cursor: 'pointer', border: 'none', fontFamily: 'inherit', flexShrink: 0,
                   display: 'flex', alignItems: 'center', gap: 4, transition: 'background 0.15s',
                   ...(statusFilter === f
                     ? { background: '#1AABDB', color: '#fff' }
@@ -341,10 +426,10 @@ export default function AdminLeave() {
             ))}
           </div>
 
-          <div style={{ flex: 1 }} />
+          {!isMobile && <div style={{ flex: 1 }} />}
 
           {/* Search */}
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', width: isMobile ? '100%' : 'auto' }}>
             <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -352,7 +437,7 @@ export default function AdminLeave() {
             </div>
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search name, ID, reason…"
-              style={{ ...inputStyle, paddingLeft: 30, width: isMobile ? '100%' : 176 }}
+              style={{ ...inputStyle, paddingLeft: 30, width: isMobile ? '100%' : 176, boxSizing: 'border-box' }}
               onFocus={e => e.target.style.border = '1px solid #1AABDB'}
               onBlur={e => e.target.style.border = '1px solid var(--card-border)'} />
           </div>
@@ -360,9 +445,10 @@ export default function AdminLeave() {
           {/* Filter toggle */}
           <button onClick={() => setFiltersOpen(p => !p)}
             style={{
-              display: 'flex', alignItems: 'center', gap: 6,
+              display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'flex-start', gap: 6,
               padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
               cursor: 'pointer', border: 'none', fontFamily: 'inherit', transition: 'background 0.15s',
+              width: isMobile ? '100%' : 'auto',
               ...(filtersOpen || hasActiveFilters
                 ? { background: '#1AABDB', color: '#fff' }
                 : { background: 'var(--surface2, rgba(0,0,0,0.04))', color: 'var(--text-secondary)' }
@@ -377,7 +463,7 @@ export default function AdminLeave() {
 
         {/* Expandable advanced filters */}
         {filtersOpen && (
-          <div style={{ padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
+          <div style={{ padding: '12px 16px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap', gap: 12, alignItems: isMobile ? 'stretch' : 'flex-end' }}>
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>Type</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -397,36 +483,38 @@ export default function AdminLeave() {
               </div>
             </div>
 
-            <div>
+            <div style={{ width: isMobile ? '100%' : 'auto' }}>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>Department</p>
               <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-                style={{ ...inputStyle, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}
+                style={{ ...inputStyle, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' }}
                 onFocus={e => e.target.style.border = '1px solid #1AABDB'}
                 onBlur={e => e.target.style.border = '1px solid var(--card-border)'}>
                 {departments.map(d => <option key={d}>{d}</option>)}
               </select>
             </div>
 
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>From date</p>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                style={inputStyle}
-                onFocus={e => e.target.style.border = '1px solid #1AABDB'}
-                onBlur={e => e.target.style.border = '1px solid var(--card-border)'} />
+            <div style={{ display: 'flex', gap: 12, width: isMobile ? '100%' : 'auto' }}>
+              <div style={{ flex: isMobile ? 1 : 'none' }}>
+                <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>From date</p>
+                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                  style={{ ...inputStyle, width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.border = '1px solid #1AABDB'}
+                  onBlur={e => e.target.style.border = '1px solid var(--card-border)'} />
+              </div>
+
+              <div style={{ flex: isMobile ? 1 : 'none' }}>
+                <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>To date</p>
+                <input type="date" value={dateTo} min={dateFrom} onChange={e => setDateTo(e.target.value)}
+                  style={{ ...inputStyle, width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.border = '1px solid #1AABDB'}
+                  onBlur={e => e.target.style.border = '1px solid var(--card-border)'} />
+              </div>
             </div>
 
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>To date</p>
-              <input type="date" value={dateTo} min={dateFrom} onChange={e => setDateTo(e.target.value)}
-                style={inputStyle}
-                onFocus={e => e.target.style.border = '1px solid #1AABDB'}
-                onBlur={e => e.target.style.border = '1px solid var(--card-border)'} />
-            </div>
-
-            <div>
+            <div style={{ width: isMobile ? '100%' : 'auto' }}>
               <p style={{ fontSize: 11, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-muted)' }}>Sort by</p>
               <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                style={{ ...inputStyle, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}
+                style={{ ...inputStyle, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' }}
                 onFocus={e => e.target.style.border = '1px solid #1AABDB'}
                 onBlur={e => e.target.style.border = '1px solid var(--card-border)'}>
                 {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -439,7 +527,8 @@ export default function AdminLeave() {
                   padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                   color: '#EF4444', background: 'rgba(239,68,68,0.08)',
                   border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer',
-                  fontFamily: 'inherit', alignSelf: 'flex-end',
+                  fontFamily: 'inherit', alignSelf: isMobile ? 'stretch' : 'flex-end',
+                  width: isMobile ? '100%' : 'auto',
                 }}>
                 Clear all
               </button>
@@ -459,7 +548,7 @@ export default function AdminLeave() {
         </div>
       )}
 
-      {/* Table */}
+      {/* List */}
       <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16, overflow: 'hidden' }}>
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 64 }}>
@@ -481,8 +570,21 @@ export default function AdminLeave() {
               </button>
             )}
           </div>
+        ) : isMobile ? (
+          // ── Mobile: stacked cards ──
+          filtered.map(leave => (
+            <LeaveCardMobile
+              key={leave.id}
+              leave={leave}
+              updating={updating}
+              onApprove={(id) => updateStatus(id, 'Approved')}
+              onReject={(id) => updateStatus(id, 'Rejected')}
+              onDelete={deleteLeave}
+            />
+          ))
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          // ── Desktop: table ──
+          <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
             <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--card-border)' }}>
