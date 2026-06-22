@@ -67,6 +67,144 @@ function groupByDate(activities) {
   return Object.values(groups);
 }
 
+// ── Activity row — desktop horizontal layout ──────────────────────────────
+function ActivityRowDesktop({ activity, isLast }) {
+  const cfg     = getCfg(activity.category);
+  const isAdmin = !activity.empId || activity.employeeName === "Admin";
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 16,
+      padding: "14px 20px", fontSize: 14, transition: "background 0.15s",
+      borderBottom: isLast ? "none" : "1px solid var(--card-border)",
+    }}
+      onMouseEnter={e => e.currentTarget.style.background = "rgba(26,171,219,0.02)"}
+      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+    >
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.color }} />
+      </div>
+
+      <div style={{ width: 112, flexShrink: 0 }}>
+        <p style={{ fontSize: 12, fontWeight: 600, margin: "0 0 2px", color: "var(--text-primary)" }}>
+          {formatRelative(activity.createdAt)}
+        </p>
+        <p style={{ fontSize: 11, margin: 0, color: "var(--text-muted)" }}>
+          {new Date(activity.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        </p>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, width: 160, flexShrink: 0, minWidth: 0 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 12, fontWeight: 700, color: "#fff",
+          background: isAdmin ? "#EF4444" : "#1AABDB",
+        }}>
+          {isAdmin ? "A" : (activity.employeeName?.charAt(0) || "?")}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, margin: "0 0 1px", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {activity.employeeName || "Admin"}
+          </p>
+          <p style={{ fontSize: 11, margin: 0, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {activity.empId || "admin"}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ width: 112, flexShrink: 0 }}>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 4,
+          padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+          background: cfg.bg, color: cfg.color,
+        }}>
+          {getIcon(activity.category)}
+          {cfg.label || activity.category}
+        </span>
+      </div>
+
+      <div style={{ width: 176, flexShrink: 0 }}>
+        <p style={{ fontSize: 13, fontWeight: 500, margin: 0, color: "var(--text-primary)" }}>
+          {activity.action}
+        </p>
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 12, margin: 0, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          title={activity.details || ""}>
+          {activity.details || "—"}
+        </p>
+      </div>
+
+      <div style={{ flexShrink: 0 }}>
+        <p style={{ fontSize: 11, margin: 0, color: "var(--text-muted)" }}>
+          {formatFullTime(activity.createdAt)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Activity row — mobile stacked card layout ─────────────────────────────
+function ActivityRowMobile({ activity, isLast }) {
+  const cfg     = getCfg(activity.category);
+  const isAdmin = !activity.empId || activity.employeeName === "Admin";
+  return (
+    <div style={{
+      padding: "12px 16px",
+      borderBottom: isLast ? "none" : "1px solid var(--card-border)",
+    }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 13, fontWeight: 700, color: "#fff",
+          background: isAdmin ? "#EF4444" : "#1AABDB",
+        }}>
+          {isAdmin ? "A" : (activity.employeeName?.charAt(0) || "?")}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: 0, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {activity.employeeName || "Admin"}
+            </p>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", flexShrink: 0 }}>
+              {formatRelative(activity.createdAt)}
+            </span>
+          </div>
+          <p style={{ fontSize: 11, margin: "1px 0 0", color: "var(--text-muted)" }}>
+            {activity.empId || "admin"}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: activity.details ? 6 : 0 }}>
+        <p style={{ fontSize: 14, fontWeight: 600, margin: 0, color: "var(--text-primary)", flex: 1, minWidth: 0 }}>
+          {activity.action}
+        </p>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0,
+          padding: "3px 8px", borderRadius: 999, fontSize: 10, fontWeight: 600,
+          background: cfg.bg, color: cfg.color,
+        }}>
+          {getIcon(activity.category)}
+          {cfg.label || activity.category}
+        </span>
+      </div>
+
+      {activity.details && (
+        <p style={{ fontSize: 12, margin: 0, color: "var(--text-secondary)" }}>
+          {activity.details}
+        </p>
+      )}
+
+      <p style={{ fontSize: 10, margin: "6px 0 0", color: "var(--text-muted)" }}>
+        {formatFullTime(activity.createdAt)}
+      </p>
+    </div>
+  );
+}
+
 export default function ActivityLog() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -163,14 +301,13 @@ export default function ActivityLog() {
   return (
     <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
 
-      {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 32 }}>
+      <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: isMobile ? 20 : 32 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <div style={{ width: 4, height: 24, borderRadius: 999, background: "#1AABDB", flexShrink: 0 }} />
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>Activity Log</h1>
+            <h1 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>Activity Log</h1>
           </div>
-          <p style={{ fontSize: 14, margin: "0 0 0 12px", color: "var(--text-secondary)" }}>
+          <p style={{ fontSize: isMobile ? 12 : 14, margin: "0 0 0 12px", color: "var(--text-secondary)" }}>
             Full system audit trail · auto-refreshes every 30s
           </p>
         </div>
@@ -194,12 +331,11 @@ export default function ActivityLog() {
         </button>
       </div>
 
-      {/* ── Stat cards ── */}
       <div style={{
         display: "grid",
         gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
-        gap: 16,
-        marginBottom: 24,
+        gap: isMobile ? 10 : 16,
+        marginBottom: isMobile ? 16 : 24,
       }}>
         {[
           { label: "Total Activities",  value: activities.length, color: "#1AABDB", bg: "rgba(26,171,219,0.08)" },
@@ -208,24 +344,21 @@ export default function ActivityLog() {
         ].map((s) => (
           <div key={s.label} style={{
             background: "var(--card-bg)", border: "1px solid var(--card-border)",
-            borderRadius: 16, padding: 20, transition: "all 0.2s",
+            borderRadius: 16, padding: isMobile ? 16 : 20, transition: "all 0.2s",
           }}>
-            <p style={{ fontSize: 12, fontWeight: 500, margin: "0 0 8px", color: "var(--text-secondary)" }}>{s.label}</p>
-            <p style={{ fontSize: 30, fontWeight: 700, margin: 0, color: s.color }}>{s.value}</p>
+            <p style={{ fontSize: 12, fontWeight: 500, margin: "0 0 6px", color: "var(--text-secondary)" }}>{s.label}</p>
+            <p style={{ fontSize: isMobile ? 24 : 30, fontWeight: 700, margin: 0, color: s.color }}>{s.value}</p>
           </div>
         ))}
       </div>
 
-      {/* ── Filters ── */}
       <div style={{
         background: "var(--card-bg)", border: "1px solid var(--card-border)",
-        borderRadius: 16, padding: 16, marginBottom: 20,
+        borderRadius: 16, padding: isMobile ? 12 : 16, marginBottom: 20,
         display: "flex", flexDirection: "column", gap: 12,
       }}>
-        {/* Row 1: search + date range */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          {/* Search */}
-          <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", flexWrap: "wrap", gap: 12, alignItems: isMobile ? "stretch" : "center" }}>
+          <div style={{ position: "relative", flex: 1, minWidth: isMobile ? "100%" : 200 }}>
             <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex" }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -240,22 +373,21 @@ export default function ActivityLog() {
             />
           </div>
 
-          {/* Date from */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)", whiteSpace: "nowrap" }}>From</span>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              style={{ ...inputStyle, padding: "8px 12px" }}
-              onFocus={e => e.target.style.border = "1px solid #1AABDB"}
-              onBlur={e => e.target.style.border = "1px solid var(--card-border)"} />
-          </div>
-
-          {/* Date to */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)", whiteSpace: "nowrap" }}>To</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} min={dateFrom}
-              style={{ ...inputStyle, padding: "8px 12px" }}
-              onFocus={e => e.target.style.border = "1px solid #1AABDB"}
-              onBlur={e => e.target.style.border = "1px solid var(--card-border)"} />
+          <div style={{ display: "flex", gap: 8, width: isMobile ? "100%" : "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: isMobile ? 1 : "none" }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)", whiteSpace: "nowrap" }}>From</span>
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                style={{ ...inputStyle, padding: "8px 10px", width: isMobile ? "100%" : "auto", fontSize: isMobile ? 12 : 14 }}
+                onFocus={e => e.target.style.border = "1px solid #1AABDB"}
+                onBlur={e => e.target.style.border = "1px solid var(--card-border)"} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: isMobile ? 1 : "none" }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)", whiteSpace: "nowrap" }}>To</span>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} min={dateFrom}
+                style={{ ...inputStyle, padding: "8px 10px", width: isMobile ? "100%" : "auto", fontSize: isMobile ? 12 : 14 }}
+                onFocus={e => e.target.style.border = "1px solid #1AABDB"}
+                onBlur={e => e.target.style.border = "1px solid var(--card-border)"} />
+            </div>
           </div>
 
           {hasFilters && (
@@ -264,14 +396,20 @@ export default function ActivityLog() {
                 padding: "8px 12px", borderRadius: 12, fontSize: 12, fontWeight: 600,
                 color: "#EF4444", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
                 cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
+                width: isMobile ? "100%" : "auto",
               }}>
               Clear filters
             </button>
           )}
         </div>
 
-        {/* Row 2: category pills */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{
+          display: "flex", gap: 8,
+          flexWrap: isMobile ? "nowrap" : "wrap",
+          overflowX: isMobile ? "auto" : "visible",
+          paddingBottom: isMobile ? 4 : 0,
+          WebkitOverflowScrolling: "touch",
+        }}>
           {CATEGORIES.map(cat => {
             const cfg      = getCfg(cat);
             const isActive = category.toUpperCase() === cat.toUpperCase() || category === cat;
@@ -279,7 +417,7 @@ export default function ActivityLog() {
             return (
               <button key={cat} onClick={() => setCategory(cat)}
                 style={{
-                  display: "flex", alignItems: "center", gap: 6,
+                  display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
                   padding: "6px 12px", borderRadius: 12, fontSize: 12, fontWeight: 600,
                   cursor: "pointer", transition: "all 0.18s", fontFamily: "inherit",
                   ...(isActive
@@ -296,14 +434,12 @@ export default function ActivityLog() {
         </div>
       </div>
 
-      {/* Result count */}
       {hasFilters && (
         <p style={{ fontSize: 12, marginBottom: 12, color: "var(--text-muted)" }}>
           {filtered.length} result{filtered.length !== 1 ? "s" : ""} found
         </p>
       )}
 
-      {/* ── Activity feed ── */}
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: 16, overflow: "hidden" }}>
 
         {loading ? (
@@ -332,10 +468,9 @@ export default function ActivityLog() {
           </div>
         ) : grouped.map((group, gi) => (
           <div key={gi}>
-            {/* Date group header */}
             <div style={{
               display: "flex", alignItems: "center", gap: 12,
-              padding: "10px 20px", position: "sticky", top: 0, zIndex: 10,
+              padding: isMobile ? "8px 16px" : "10px 20px", position: "sticky", top: 0, zIndex: 10,
               background: "var(--surface2)",
               borderBottom: "1px solid var(--card-border)",
               borderTop: gi > 0 ? "1px solid var(--card-border)" : "none",
@@ -349,104 +484,26 @@ export default function ActivityLog() {
               </span>
             </div>
 
-            {/* Rows */}
-            {group.items.map((activity, i) => {
-              const cfg     = getCfg(activity.category);
-              const isAdmin = !activity.empId || activity.employeeName === "Admin";
-              return (
-                <div key={activity.id}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 16,
-                    padding: "14px 20px", fontSize: 14, transition: "background 0.15s",
-                    borderBottom: i < group.items.length - 1 ? "1px solid var(--card-border)" : "none",
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = "rgba(26,171,219,0.02)"}
-                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                >
-                  {/* Timeline dot */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.color }} />
-                  </div>
-
-                  {/* Time */}
-                  <div style={{ width: 112, flexShrink: 0 }}>
-                    <p style={{ fontSize: 12, fontWeight: 600, margin: "0 0 2px", color: "var(--text-primary)" }}>
-                      {formatRelative(activity.createdAt)}
-                    </p>
-                    <p style={{ fontSize: 11, margin: 0, color: "var(--text-muted)" }}>
-                      {new Date(activity.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                    </p>
-                  </div>
-
-                  {/* Avatar + name */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, width: 160, flexShrink: 0, minWidth: 0 }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 12, fontWeight: 700, color: "#fff",
-                      background: isAdmin ? "#EF4444" : "#1AABDB",
-                    }}>
-                      {isAdmin ? "A" : (activity.employeeName?.charAt(0) || "?")}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, margin: "0 0 1px", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {activity.employeeName || "Admin"}
-                      </p>
-                      <p style={{ fontSize: 11, margin: 0, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {activity.empId || "admin"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Category badge */}
-                  <div style={{ width: 112, flexShrink: 0 }}>
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", gap: 4,
-                      padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                      background: cfg.bg, color: cfg.color,
-                    }}>
-                      {getIcon(activity.category)}
-                      {cfg.label || activity.category}
-                    </span>
-                  </div>
-
-                  {/* Action */}
-                  <div style={{ width: 176, flexShrink: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 500, margin: 0, color: "var(--text-primary)" }}>
-                      {activity.action}
-                    </p>
-                  </div>
-
-                  {/* Details */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 12, margin: 0, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                      title={activity.details || ""}>
-                      {activity.details || "—"}
-                    </p>
-                  </div>
-
-                  {/* Full timestamp — hidden on smaller screens */}
-                  {!isMobile && (
-                    <div style={{ flexShrink: 0 }}>
-                      <p style={{ fontSize: 11, margin: 0, color: "var(--text-muted)" }}>
-                        {formatFullTime(activity.createdAt)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {group.items.map((activity, i) =>
+              isMobile
+                ? <ActivityRowMobile key={activity.id} activity={activity} isLast={i === group.items.length - 1} />
+                : <ActivityRowDesktop key={activity.id} activity={activity} isLast={i === group.items.length - 1} />
+            )}
           </div>
         ))}
       </div>
 
-      {/* ── Pagination ── */}
       {totalPages > 1 && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, padding: "0 4px" }}>
-          <p style={{ fontSize: 12, margin: 0, color: "var(--text-muted)" }}>
+        <div style={{
+          display: "flex", flexDirection: isMobile ? "column" : "row",
+          alignItems: isMobile ? "stretch" : "center",
+          justifyContent: "space-between", gap: isMobile ? 10 : 0,
+          marginTop: 16, padding: "0 4px",
+        }}>
+          <p style={{ fontSize: 12, margin: 0, color: "var(--text-muted)", textAlign: isMobile ? "center" : "left" }}>
             Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}
           </p>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, justifyContent: isMobile ? "center" : "flex-start", flexWrap: "wrap" }}>
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
               style={{
@@ -457,8 +514,9 @@ export default function ActivityLog() {
               }}>
               ← Prev
             </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const p = page <= 3 ? i + 1 : page - 2 + i;
+            {Array.from({ length: Math.min(isMobile ? 3 : 5, totalPages) }, (_, i) => {
+              const span = isMobile ? 3 : 5;
+              const p = page <= Math.ceil(span / 2) ? i + 1 : page - Math.floor(span / 2) + i;
               if (p < 1 || p > totalPages) return null;
               return (
                 <button key={p} onClick={() => setPage(p)}
