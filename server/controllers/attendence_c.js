@@ -79,7 +79,7 @@ const markAttendance = async (req, res) => {
 
       // Calculate hours worked
       const checkIn      = new Date(existing.checkInTime || existing.timestamp)
-      const checkOut     = now
+      const checkOut     = getISDate()
       const diffMs       = checkOut - checkIn
       const hoursWorked  = diffMs / (1000 * 60 * 60)
       const { standardHours } = await getOfficeSettings()
@@ -88,7 +88,7 @@ const overtimeMinutes = Math.round((hoursWorked - standardHours) * 60)
       const updated = await prisma.attendance.update({
         where: { id: existing.id },
         data: {
-          checkOutTime:    now,
+          checkOutTime:    getISDate(),
           hoursWorked:     Math.round(hoursWorked * 100) / 100,
           overtimeMinutes: overtimeMinutes,
         }
@@ -124,7 +124,7 @@ const overtimeMinutes = Math.round((hoursWorked - standardHours) * 60)
       data: {
         empId,
         status,
-        checkInTime: now,
+        checkInTime: getISDate(),
       }
     })
 
