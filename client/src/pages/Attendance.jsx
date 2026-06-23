@@ -50,6 +50,36 @@ const getStatusStyle = (status) => STATUS_STYLE[status] || STATUS_STYLE['Absent'
 
 const FILTERS = ['All', 'Present', 'Late', 'WFH', 'On Duty', 'Leave', 'Absent']
 
+// Add this constant at the top of the file
+const TIMEZONE_FIX_DATE = new Date('2026-06-23T00:00:00+05:30') // date you deployed the fix
+
+function displayTime(ts) {
+  if (!ts) return null
+  const d = new Date(ts)
+  
+  // Old records were double-offset — subtract 5.5hrs for display only
+  const isOldRecord = d < TIMEZONE_FIX_DATE
+  const display = isOldRecord
+    ? new Date(d.getTime() - 5.5 * 60 * 60 * 1000)
+    : d
+
+  const h = display.getHours()
+  const m = display.getMinutes()
+  const ampm = h >= 12 ? 'pm' : 'am'
+  const h12 = h % 12 || 12
+  return `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`
+}
+
+function extractTime(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const isOldRecord = d < TIMEZONE_FIX_DATE
+  const display = isOldRecord
+    ? new Date(d.getTime() - 5.5 * 60 * 60 * 1000)
+    : d
+  return `${String(display.getHours()).padStart(2,'0')}:${String(display.getMinutes()).padStart(2,'0')}`
+}
+
 // REPLACE both extractTime and displayTime with these:
 
 function extractTime(ts) {
