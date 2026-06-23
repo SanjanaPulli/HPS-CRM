@@ -20,7 +20,10 @@ const getOfficeSettings = async () => {
   return { lateHour: lh, lateMin: lm, standardHours }
 }
 
-const getISTDate = () => new Date()
+const getISTDate = () => {
+  const now = new Date()
+  return new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
+}
 
 const markAttendance = async (req, res) => {
   try {
@@ -39,12 +42,9 @@ const markAttendance = async (req, res) => {
     const now = new Date()
     const ist = getISTDate()
 
-    const istOffset   = 5.5 * 60 * 60 * 1000
-    const istNow      = new Date(now.getTime() + istOffset)
-    const istMidnight = new Date(istNow)
-    istMidnight.setUTCHours(0, 0, 0, 0)
-    const todayStart  = new Date(istMidnight.getTime() - istOffset)
-    const todayEnd    = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+    // Today's start (midnight UTC)
+    const todayStart = new Date(now)
+    todayStart.setHours(0, 0, 0, 0)
 
     // Check approved leave
     const onLeave = await prisma.leaveRequest.findFirst({
@@ -53,7 +53,7 @@ const markAttendance = async (req, res) => {
         status: 'Approved',
         date: {
           gte: todayStart,
-          lte: todayEnd
+          lte: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1)
         }
       }
     })
@@ -78,17 +78,17 @@ const markAttendance = async (req, res) => {
       }
 
       // Calculate hours worked
-      const checkIn     = new Date(existing.checkInTime || existing.timestamp)
-      const checkOut    = getISTDate()
+      const checkIn      = new Date(existing.checkInTime || existing.timestamp)
+      const checkOut     = now
       const diffMs       = checkOut - checkIn
       const hoursWorked  = diffMs / (1000 * 60 * 60)
       const { standardHours } = await getOfficeSettings()
-      const overtimeMinutes = Math.round((hoursWorked - standardHours) * 60)
+const overtimeMinutes = Math.round((hoursWorked - standardHours) * 60)
 
       const updated = await prisma.attendance.update({
         where: { id: existing.id },
         data: {
-          checkOutTime:    checkOut,
+          checkOutTime:    now,
           hoursWorked:     Math.round(hoursWorked * 100) / 100,
           overtimeMinutes: overtimeMinutes,
         }
@@ -113,8 +113,8 @@ const markAttendance = async (req, res) => {
     }
 
     // ── CHECK-IN ─────────────────────────────────────────────────────────────
-    const hour         = ist.getHours()
-    const min          = ist.getMinutes()
+    const hour         = ist.getUTCHours()
+    const min          = ist.getUTCMinutes()
     const totalMinutes = hour * 60 + min
     const { lateHour, lateMin, standardHours } = await getOfficeSettings()
     const isLate = totalMinutes >= lateHour * 60 + lateMin
@@ -124,7 +124,7 @@ const markAttendance = async (req, res) => {
       data: {
         empId,
         status,
-        checkInTime: getISTDate(),
+        checkInTime: now,
       }
     })
 
@@ -151,17 +151,10 @@ const markAttendance = async (req, res) => {
 
 const getTodayAttendance = async (req, res) => {
   try {
-    // IST midnight = UTC 18:30 previous day
-    const now = new Date()
-    const istOffset = 5.5 * 60 * 60 * 1000
-    const istNow = new Date(now.getTime() + istOffset)
-    const istMidnight = new Date(istNow)
-    istMidnight.setUTCHours(0, 0, 0, 0)
-    const todayStartUTC = new Date(istMidnight.getTime() - istOffset)
-    const todayEndUTC   = new Date(todayStartUTC.getTime() + 24 * 60 * 60 * 1000)
-
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const records = await prisma.attendance.findMany({
-      where:   { timestamp: { gte: todayStartUTC, lt: todayEndUTC } },
+      where:   { timestamp: { gte: today } },
       include: { employee: true },
       orderBy: { timestamp: 'desc' }
     })
@@ -176,9 +169,11 @@ const getAllAttendance = async (req, res) => {
     const { date } = req.query
     let where = {}
     if (date) {
-      const startUTC = new Date(date + 'T00:00:00+05:30')
-      const endUTC   = new Date(date + 'T23:59:59+05:30')
-      where = { timestamp: { gte: startUTC, lte: endUTC } }
+      const start = new Date(date)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(date)
+      end.setHours(23, 59, 59, 999)
+      where = { timestamp: { gte: start, lte: end } }
     }
     const records = await prisma.attendance.findMany({
       where,
@@ -190,8 +185,6 @@ const getAllAttendance = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch attendance' })
   }
 }
-
-
 
 const getAttendanceByEmployee = async (req, res) => {
   try {
