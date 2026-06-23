@@ -114,6 +114,11 @@ app.patch('/api/admin/password', async (req, res) => {
   res.json({ message: 'Password updated' })
 })
 
+// TEMPORARY - timezone debug, remove after checking
+console.log('Server timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone)
+console.log('Current time:', new Date().toString())
+console.log('UTC time:', new Date().toUTCString())
+
 const PORT = process.env.PORT || 5000
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`)
