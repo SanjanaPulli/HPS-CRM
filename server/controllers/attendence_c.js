@@ -20,10 +20,7 @@ const getOfficeSettings = async () => {
   return { lateHour: lh, lateMin: lm, standardHours }
 }
 
-const getISTDate = () => {
-  const now = new Date()
-  return new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
-}
+const getISTDate = () => new Date()
 
 const markAttendance = async (req, res) => {
   try {
@@ -43,8 +40,10 @@ const markAttendance = async (req, res) => {
     const ist = getISTDate()
 
     // Today's start (midnight UTC)
-    const todayStart = new Date(now)
+    const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date()
+    todayEnd.setHours(23, 59, 59, 999)
 
     // Check approved leave
     const onLeave = await prisma.leaveRequest.findFirst({
@@ -53,7 +52,7 @@ const markAttendance = async (req, res) => {
         status: 'Approved',
         date: {
           gte: todayStart,
-          lte: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1)
+          lte: todayEnd
         }
       }
     })
@@ -113,8 +112,8 @@ const markAttendance = async (req, res) => {
     }
 
     // ── CHECK-IN ─────────────────────────────────────────────────────────────
-    const hour         = ist.getUTCHours()
-    const min          = ist.getUTCMinutes()
+    const hour         = ist.getHours()
+    const min          = ist.getMinutes()
     const totalMinutes = hour * 60 + min
     const { lateHour, lateMin, standardHours } = await getOfficeSettings()
     const isLate = totalMinutes >= lateHour * 60 + lateMin
