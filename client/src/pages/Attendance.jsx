@@ -142,8 +142,8 @@ function Attendance() {
   const saveEdit = async () => {
     setSaving(true)
     try {
-      const cin  = editForm.checkInTime  ? `${selectedDate}T${editForm.checkInTime}:00`  : null
-      const cout = editForm.checkOutTime ? `${selectedDate}T${editForm.checkOutTime}:00` : null
+      const cin  = editForm.checkInTime  ? `${selectedDate}T${editForm.checkInTime}:00+05:30`  : null
+      const cout = editForm.checkOutTime ? `${selectedDate}T${editForm.checkOutTime}:00+05:30` : null
       const hoursWorked = cin && cout
         ? (() => {
             const [ih, im] = editForm.checkInTime.split(':').map(Number)
