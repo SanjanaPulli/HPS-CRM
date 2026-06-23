@@ -39,11 +39,12 @@ const markAttendance = async (req, res) => {
     const now = new Date()
     const ist = getISTDate()
 
-    // Today's start (midnight UTC)
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    const todayEnd = new Date()
-    todayEnd.setHours(23, 59, 59, 999)
+    const istOffset   = 5.5 * 60 * 60 * 1000
+    const istNow      = new Date(now.getTime() + istOffset)
+    const istMidnight = new Date(istNow)
+    istMidnight.setUTCHours(0, 0, 0, 0)
+    const todayStart  = new Date(istMidnight.getTime() - istOffset)
+    const todayEnd    = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
 
     // Check approved leave
     const onLeave = await prisma.leaveRequest.findFirst({
@@ -150,10 +151,17 @@ const markAttendance = async (req, res) => {
 
 const getTodayAttendance = async (req, res) => {
   try {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    // IST midnight = UTC 18:30 previous day
+    const now = new Date()
+    const istOffset = 5.5 * 60 * 60 * 1000
+    const istNow = new Date(now.getTime() + istOffset)
+    const istMidnight = new Date(istNow)
+    istMidnight.setUTCHours(0, 0, 0, 0)
+    const todayStartUTC = new Date(istMidnight.getTime() - istOffset)
+    const todayEndUTC   = new Date(todayStartUTC.getTime() + 24 * 60 * 60 * 1000)
+
     const records = await prisma.attendance.findMany({
-      where:   { timestamp: { gte: today } },
+      where:   { timestamp: { gte: todayStartUTC, lt: todayEndUTC } },
       include: { employee: true },
       orderBy: { timestamp: 'desc' }
     })
@@ -168,11 +176,9 @@ const getAllAttendance = async (req, res) => {
     const { date } = req.query
     let where = {}
     if (date) {
-      const start = new Date(date)
-      start.setHours(0, 0, 0, 0)
-      const end = new Date(date)
-      end.setHours(23, 59, 59, 999)
-      where = { timestamp: { gte: start, lte: end } }
+      const startUTC = new Date(date + 'T00:00:00+05:30')
+      const endUTC   = new Date(date + 'T23:59:59+05:30')
+      where = { timestamp: { gte: startUTC, lte: endUTC } }
     }
     const records = await prisma.attendance.findMany({
       where,
@@ -184,6 +190,8 @@ const getAllAttendance = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch attendance' })
   }
 }
+
+
 
 const getAttendanceByEmployee = async (req, res) => {
   try {

@@ -50,21 +50,19 @@ const getStatusStyle = (status) => STATUS_STYLE[status] || STATUS_STYLE['Absent'
 
 const FILTERS = ['All', 'Present', 'Late', 'WFH', 'On Duty', 'Leave', 'Absent']
 
-// ── Helper: extract HH:MM from a stored timestamp treating it as local (IST) ──
+// REPLACE both extractTime and displayTime with these:
+
 function extractTime(ts) {
   if (!ts) return ''
   const d = new Date(ts)
-  const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000)
-  return `${String(ist.getUTCHours()).padStart(2,'0')}:${String(ist.getUTCMinutes()).padStart(2,'0')}`
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
-// Add this helper near the top of the file (after extractTime)
+
 function displayTime(ts) {
   if (!ts) return null
   const d = new Date(ts)
-  // Add 5:30 IST offset manually
-  const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000)
-  const h = ist.getUTCHours()
-  const m = ist.getUTCMinutes()
+  const h = d.getHours()
+  const m = d.getMinutes()
   const ampm = h >= 12 ? 'pm' : 'am'
   const h12 = h % 12 || 12
   return `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`
