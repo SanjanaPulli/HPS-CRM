@@ -13,7 +13,6 @@ const prisma = require('../prismaClient')
 router.post('/scan', markAttendance)
 router.get('/today', getTodayAttendance)
 router.get('/', getAllAttendance)
-router.get('/:empId', getAttendanceByEmployee)
 
 // ── Edit attendance record ──
 router.patch('/:id', async (req, res) => {
@@ -34,5 +33,8 @@ router.patch('/:id', async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 })
+
+
+router.get('/:empId', getAttendanceByEmployee)
 
 module.exports = router
