@@ -82,21 +82,6 @@ function extractTime(ts) {
 
 // REPLACE both extractTime and displayTime with these:
 
-function extractTime(ts) {
-  if (!ts) return ''
-  const d = new Date(ts)
-  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-}
-
-function displayTime(ts) {
-  if (!ts) return null
-  const d = new Date(ts)
-  const h = d.getHours()
-  const m = d.getMinutes()
-  const ampm = h >= 12 ? 'pm' : 'am'
-  const h12 = h % 12 || 12
-  return `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`
-}
 
 function Attendance() {
   // ── Edit modal state ──
