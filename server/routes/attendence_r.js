@@ -4,12 +4,17 @@ const {
   markAttendance,
   getTodayAttendance,
   getAllAttendance,
-  getAttendanceByEmployee
+  getAttendanceByEmployee,
+  updateAttendance,
+  deleteAttendance
 } = require('../controllers/attendence_c')
+const { verifyAdmin } = require('../utils/auth')
 
 router.post('/scan', markAttendance)
-router.get('/today', getTodayAttendance)   // ✅ must be before /:empId
-router.get('/', getAllAttendance)
+router.get('/today', verifyAdmin, getTodayAttendance)
+router.get('/', verifyAdmin, getAllAttendance)
 router.get('/:empId', getAttendanceByEmployee)
+router.put('/:id', verifyAdmin, updateAttendance)
+router.delete('/:id', verifyAdmin, deleteAttendance)
 
 module.exports = router

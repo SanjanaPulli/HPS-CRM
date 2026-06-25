@@ -28,8 +28,8 @@ const createEmployee = async (req, res) => {
   try {
     const {
       empId, name, position, department, email,
-      contact, joiningDate, salary, project,
-      projectStatus, teamLead, dailyWorkStatus,
+      contact, joiningDate, salary,
+      teamLead, dailyWorkStatus,
       photo, password
     } = req.body
 
@@ -37,8 +37,8 @@ const createEmployee = async (req, res) => {
     const employee = await prisma.employee.create({
       data: {
         empId, name, position, department, email,
-        contact, joiningDate, salary, project,
-        projectStatus, teamLead, dailyWorkStatus,
+        contact, joiningDate, salary,
+        teamLead, dailyWorkStatus,
         photo, barcodeId,
         password: password || 'hps@1234'
       }
@@ -61,16 +61,16 @@ const updateEmployee = async (req, res) => {
   try {
     const {
       name, position, department, email,
-      contact, joiningDate, salary, project,
-      projectStatus, teamLead, dailyWorkStatus, photo
+      contact, joiningDate, salary,
+      teamLead, dailyWorkStatus, photo
     } = req.body
 
     const employee = await prisma.employee.update({
       where: { empId: req.params.empId },
       data: {
         name, position, department, email,
-        contact, joiningDate, salary, project,
-        projectStatus, teamLead, dailyWorkStatus, photo
+        contact, joiningDate, salary,
+        teamLead, dailyWorkStatus, photo
       }
     })
     await logActivity({
@@ -171,37 +171,6 @@ const updateWorkStatus = async (req, res) => {
   }
 }
 
-const updateProject = async (req, res) => {
-  try {
-    const { project, projectStatus } = req.body
-    const employee = await prisma.employee.update({
-      where: { empId: req.params.empId },
-      data: {
-        ...(project !== undefined && { project }),
-        ...(projectStatus !== undefined && { projectStatus }),
-      }
-    })
-    await logActivity({
-      empId: employee.empId,
-      employeeName: employee.name,
-      action: 'Project Updated',
-      category: 'WORK',
-      details: `${employee.project} (${employee.projectStatus})`
-    })
-    await prisma.notification.create({
-      data: {
-        message: `You have been assigned to project: ${employee.project} (${employee.projectStatus})`,
-        type: 'info',
-        target: employee.empId,
-        isRead: false,
-        createdAt: new Date()
-      }
-    })
-    res.json({ message: 'Project updated successfully', project: employee.project, projectStatus: employee.projectStatus })
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update project' })
-  }
-}
 
 // ✅ NEW — toggle attendance leader
 const toggleAttendanceLeader = async (req, res) => {
@@ -311,7 +280,6 @@ module.exports = {
   deleteEmployee,
   loginEmployee,
   updateWorkStatus,
-  updateProject,
   toggleAttendanceLeader,
   changePassword,
   resetPassword,

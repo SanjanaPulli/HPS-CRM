@@ -4,6 +4,31 @@ import axios from 'axios'
 import BASE_URL from '../config'
 import AnnouncementBanner from '../components/AnnouncementBanner'
 
+const LeavePortalIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="9" y1="13" x2="15" y2="13"/>
+    <line x1="9" y1="17" x2="15" y2="17"/>
+  </svg>
+)
+
+const ProfileIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+)
+
+const AttendanceIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+)
+
 function EmployeeDashboard() {
   const navigate = useNavigate()
   const employee = JSON.parse(localStorage.getItem('employeeAuth') || 'null')
@@ -11,8 +36,6 @@ function EmployeeDashboard() {
   const [pendingLeave, setPendingLeave] = useState(0)
   const [loading, setLoading] = useState(true)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-
-  
 
   useEffect(() => {
     if (!employee) { navigate('/employee/login'); return }
@@ -47,15 +70,15 @@ function EmployeeDashboard() {
 
   // Card color mappings (bg + button colors)
   const cardStyles = [
-    { bg: 'rgba(26,171,219,0.08)', btnBg: '#1AABDB', btnHover: '#1595c0' },
-    { bg: 'rgba(147,51,234,0.06)', btnBg: '#9333EA', btnHover: '#7E22CE' },
-    { bg: 'rgba(245,158,11,0.06)', btnBg: '#F59E0B', btnHover: '#D97706' },
-    { bg: 'rgba(22,163,74,0.06)',  btnBg: '#16A34A', btnHover: '#15803D' },
+    { bg: 'rgba(26,171,219,0.08)', btnBg: '#1AABDB', btnHover: '#1595c0', iconColor: '#1AABDB' },
+    { bg: 'rgba(147,51,234,0.06)', btnBg: '#9333EA', btnHover: '#7E22CE', iconColor: '#9333EA' },
+    { bg: 'rgba(245,158,11,0.06)', btnBg: '#F59E0B', btnHover: '#D97706', iconColor: '#F59E0B' },
+    { bg: 'rgba(22,163,74,0.06)',  btnBg: '#16A34A', btnHover: '#15803D', iconColor: '#16A34A' },
   ]
 
   const cards = [
     {
-      icon: '📝', label: 'Leave Portal',
+      icon: <LeavePortalIcon />, label: 'Leave Portal',
       desc: 'Apply for leave and track approval status.',
       btn: 'Open Leave Portal',
       ...cardStyles[0],
@@ -63,14 +86,14 @@ function EmployeeDashboard() {
       badge: pendingLeave > 0 ? `${pendingLeave} pending` : null,
     },
     {
-      icon: '👤', label: 'My Profile',
+      icon: <ProfileIcon />, label: 'My Profile',
       desc: 'View your employee details and work information.',
       btn: 'View Profile',
       ...cardStyles[1],
       action: () => navigate('/employee/profile'),
     },
     {
-      icon: '📅', label: 'My Attendance',
+      icon: <AttendanceIcon />, label: 'My Attendance',
       desc: 'View your full attendance history and records.',
       btn: 'View Attendance',
       ...cardStyles[2],
@@ -120,7 +143,7 @@ function EmployeeDashboard() {
             fontWeight: 700, color: '#fff', lineHeight: 1.25,
             marginBottom: '8px', wordBreak: 'break-word'
           }}>
-            Welcome back, {employee.name?.split(' ')[0]}! 👋
+            Welcome back, {employee.name?.split(' ')[0]}!
           </h2>
           <p style={{ color: '#94A3B8', fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {employee.position} · {employee.department}
@@ -220,10 +243,10 @@ function EmployeeDashboard() {
           >
             <div style={{
               width: '48px', height: '48px', borderRadius: '16px',
-              background: card.bg, display: 'flex', alignItems: 'center',
+              background: card.bg, color: card.iconColor, display: 'flex', alignItems: 'center',
               justifyContent: 'center', marginBottom: '16px'
             }}>
-              <span style={{ fontSize: '1.5rem' }}>{card.icon}</span>
+              {card.icon}
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
               <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>

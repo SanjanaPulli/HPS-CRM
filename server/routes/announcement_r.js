@@ -6,10 +6,11 @@ const {
   createAnnouncement,
   deleteAnnouncement
 } = require('../controllers/announcement_c')
+const { verifyAdmin } = require('../utils/auth')
 
 router.get('/', getAllAnnouncements)
 router.get('/employee/:empId', getAnnouncementsForEmployee)
-router.post('/', createAnnouncement)
-router.delete('/:id', deleteAnnouncement)
+router.post('/', verifyAdmin, createAnnouncement)
+router.delete('/:id', verifyAdmin, deleteAnnouncement)
 
 module.exports = router

@@ -450,10 +450,12 @@ export default function ActivityLog() {
               </div>
 
               {/* Desktop rows */}
-              <div className="activity-desktop">
-                {group.items.map((a, i) => (
-                  <ActivityRow key={a.id} activity={a} isLast={i === group.items.length - 1} />
-                ))}
+              <div className="activity-desktop" style={{ overflowX: 'auto', width: '100%' }}>
+                <div style={{ minWidth: '750px' }}>
+                  {group.items.map((a, i) => (
+                    <ActivityRow key={a.id} activity={a} isLast={i === group.items.length - 1} />
+                  ))}
+                </div>
               </div>
             </div>
           ))
@@ -483,20 +485,22 @@ export default function ActivityLog() {
 
         .activity-stats-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: 1fr;
           gap: 10px;
         }
 
         .activity-mobile  { display: block; }
         .activity-desktop { display: none;  }
 
+        @media (min-width: 480px) {
+          .activity-stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+
         @media (min-width: 700px) {
           .activity-mobile  { display: none;  }
           .activity-desktop { display: block; }
-        }
-
-        @media (max-width: 380px) {
-          .activity-stats-grid { grid-template-columns: 1fr; }
         }
       `}</style>
     </div>

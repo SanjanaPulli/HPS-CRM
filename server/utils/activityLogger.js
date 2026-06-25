@@ -8,13 +8,31 @@ const logActivity = async ({
   details = null
 }) => {
   try {
+    let finalEmployeeName = employeeName;
+    if (!employeeName || employeeName === 'Admin' || employeeName === 'Admin/Manager') {
+      const store = global.asyncLocalStorage ? global.asyncLocalStorage.getStore() : null;
+      if (store && store.adminName) {
+        finalEmployeeName = store.adminName;
+      }
+    }
+
+    let finalDetails = details;
+    if (details && typeof details === 'string') {
+      const store = global.asyncLocalStorage ? global.asyncLocalStorage.getStore() : null;
+      if (store && store.adminName) {
+        finalDetails = details
+          .replace('Actioned by: Admin/Manager', `Actioned by: ${store.adminName}`)
+          .replace('Actioned by: Admin', `Actioned by: ${store.adminName}`);
+      }
+    }
+
     await prisma.activityLog.create({
       data: {
         empId,
-        employeeName,
+        employeeName: finalEmployeeName,
         action,
         category,
-        details
+        details: finalDetails
       }
     })
   } catch (error) {

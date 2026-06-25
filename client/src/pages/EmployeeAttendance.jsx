@@ -148,19 +148,20 @@ function EmployeeAttendance() {
         </div>
       ) : isMobile ? (
         /* Mobile card list */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map(record => (
             <div key={record.id} style={{
               borderRadius: '16px', padding: '16px',
-              background: 'var(--card-bg)', border: '1px solid var(--card-border)'
+              background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div>
                   <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px' }}>
-                    {new Date(record.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(record.checkInTime || record.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
-                    {new Date(record.timestamp).toLocaleDateString('en-IN', { weekday: 'long' })}
+                    {new Date(record.checkInTime || record.timestamp).toLocaleDateString('en-IN', { weekday: 'long' })}
                   </p>
                 </div>
                 <span style={{
@@ -170,10 +171,42 @@ function EmployeeAttendance() {
                   {record.status}
                 </span>
               </div>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
-                {record.status === 'Absent' ? '—'
-                  : new Date(record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-              </p>
+              {record.status !== 'Absent' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px', marginTop: '4px' }}>
+                  <div>
+                    <p style={{ fontSize: '0.675rem', color: 'var(--text-secondary)', textTransform: 'uppercase', margin: '0 0 2px' }}>Check In</p>
+                    <p style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                      {new Date(record.checkInTime || record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.675rem', color: 'var(--text-secondary)', textTransform: 'uppercase', margin: '0 0 2px' }}>Check Out</p>
+                    <p style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                      {record.checkOutTime
+                        ? new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                        : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.675rem', color: 'var(--text-secondary)', textTransform: 'uppercase', margin: '0 0 2px' }}>Hours Worked</p>
+                    <p style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                      {record.hoursWorked != null ? `${record.hoursWorked.toFixed(2)}h` : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.675rem', color: 'var(--text-secondary)', textTransform: 'uppercase', margin: '0 0 2px' }}>Overtime</p>
+                    <p style={{ fontSize: '0.825rem', fontWeight: 600, color: record.overtimeMinutes > 0 ? '#10B981' : record.overtimeMinutes < 0 ? '#EF4444' : 'var(--text-primary)', margin: 0 }}>
+                      {record.overtimeMinutes != null
+                        ? (record.overtimeMinutes > 0 ? `+${record.overtimeMinutes}m` : `${record.overtimeMinutes}m`)
+                        : '—'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, borderTop: '1px solid var(--border)', paddingTop: '12px', marginTop: '4px' }}>
+                  No punch records for this day.
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -183,7 +216,7 @@ function EmployeeAttendance() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'rgba(26,171,219,0.03)' }}>
-                {['Date', 'Day', 'Status', 'Time'].map(h => (
+                {['Date', 'Day', 'Status', 'Check In', 'Check Out', 'Hours Worked', 'Overtime'].map(h => (
                   <th key={h} style={{
                     textAlign: 'left', fontSize: '0.75rem', fontWeight: 600,
                     padding: '16px 24px', color: 'var(--text-secondary)'
@@ -198,10 +231,10 @@ function EmployeeAttendance() {
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(26,171,219,0.03)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <td style={{ padding: '16px 24px', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {new Date(record.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(record.checkInTime || record.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </td>
                   <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                    {new Date(record.timestamp).toLocaleDateString('en-IN', { weekday: 'long' })}
+                    {new Date(record.checkInTime || record.timestamp).toLocaleDateString('en-IN', { weekday: 'long' })}
                   </td>
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{
@@ -211,9 +244,23 @@ function EmployeeAttendance() {
                       {record.status}
                     </span>
                   </td>
+                  <td style={{ padding: '16px 24px', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {record.status === 'Absent' ? '—'
+                      : new Date(record.checkInTime || record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </td>
                   <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                     {record.status === 'Absent' ? '—'
-                      : new Date(record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      : record.checkOutTime
+                        ? new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                        : '—'}
+                  </td>
+                  <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    {record.hoursWorked != null ? `${record.hoursWorked.toFixed(2)}h` : '—'}
+                  </td>
+                  <td style={{ padding: '16px 24px', fontSize: '0.875rem', fontWeight: 500, color: record.overtimeMinutes > 0 ? '#10B981' : record.overtimeMinutes < 0 ? '#EF4444' : 'var(--text-secondary)' }}>
+                    {record.overtimeMinutes != null
+                      ? (record.overtimeMinutes > 0 ? `+${record.overtimeMinutes}m` : `${record.overtimeMinutes}m`)
+                      : '—'}
                   </td>
                 </tr>
               ))}

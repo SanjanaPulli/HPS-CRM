@@ -61,7 +61,7 @@ const updateSettings = async (req, res) => {
         data: {
           checkInTime:   checkInTime   || '09:30',
           checkOutTime:  checkOutTime  || '17:30',
-          lateAfter:     lateAfter     || '10:00',
+          lateAfter:     lateAfter     || '10:15',
           halfDayBefore: halfDayBefore || '13:00',
           workingDays:   workingDays   || 'Mon,Tue,Wed,Thu,Fri,Sat',
           officeName:    officeName    || 'HPS Pvt Ltd',

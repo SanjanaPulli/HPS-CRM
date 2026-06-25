@@ -1,4 +1,4 @@
-﻿import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import BASE_URL from "../config";
 
@@ -42,7 +42,11 @@ export default function ScanPage() {
         });
         const data = await res.json();
         if (res.ok) {
+          const derivedRole = data.name === "Manager" ? "manager" : "admin";
           localStorage.setItem("adminAuth", "true");
+          localStorage.setItem("adminName", data.name || "Admin");
+          localStorage.setItem("role", derivedRole);
+          localStorage.setItem("adminToken", data.token); // Save JWT token
           navigate("/admin/dashboard");
           return;
         }

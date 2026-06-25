@@ -106,14 +106,26 @@ export default function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { theme, toggleTheme } = useTheme()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 1024 : false
+  )
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   )
   const [showMore, setShowMore] = useState(false)
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    let prevWidth = window.innerWidth
+    const handleResize = () => {
+      const currentWidth = window.innerWidth
+      setIsMobile(currentWidth < 768)
+      if (currentWidth < 1024 && prevWidth >= 1024) {
+        setCollapsed(true)
+      } else if (currentWidth >= 1024 && prevWidth < 1024) {
+        setCollapsed(false)
+      }
+      prevWidth = currentWidth
+    }
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [])
@@ -206,7 +218,6 @@ export default function AdminLayout() {
           display: "flex",
           minHeight: "100svh",
           background: "var(--bg)",
-          fontFamily: "'Segoe UI', system-ui, sans-serif",
           transition: "background 0.3s",
         }}
       >
@@ -247,7 +258,7 @@ export default function AdminLayout() {
                 >
                   <img src="/hps_new_logo_white.png" alt="HPS" style={{ height: 32, objectFit: "contain", marginBottom: 4 }} />
                   <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", whiteSpace: "nowrap" }}>
-                    Admin Portal
+                    {localStorage.getItem("adminName") || "Admin"} Portal
                   </span>
                 </button>
               )}
@@ -357,7 +368,7 @@ export default function AdminLayout() {
             ) : (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px" }}>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", margin: 0 }}>Admin Workspace</p>
+                  <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", margin: 0 }}>{(localStorage.getItem("adminName") || "Admin")} Workspace</p>
                   <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 0" }}>HPS Internal Management System</p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

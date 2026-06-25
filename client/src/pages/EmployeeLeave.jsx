@@ -348,25 +348,50 @@ function EmployeeLeave() {
         <>
           {/* Request type toggle */}
           <div style={{
-            display: 'flex', flexWrap: 'wrap', gap: 4,
-            borderRadius: 12, padding: 4, marginBottom: 24,
-            background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-            width: 'fit-content'
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+            gap: 10,
+            marginBottom: 24,
+            width: '100%'
           }}>
-            {tabItems.map(({ key, label, icon }) => (
-              <button key={key} type="button" onClick={() => setRequestType(key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 16px', borderRadius: 8,
-                  fontSize: 13, fontWeight: 600,
-                  transition: 'all 0.2s', border: 'none', cursor: 'pointer',
-                  ...(requestType === key
-                    ? { background: '#1AABDB', color: '#fff', boxShadow: '0 2px 8px rgba(26,171,219,0.3)' }
-                    : { color: 'var(--text-secondary)', background: 'transparent' })
-                }}>
-                {icon}{label}
-              </button>
-            ))}
+            {tabItems.map(({ key, label, icon }) => {
+              const active = requestType === key
+              return (
+                <button key={key} type="button" onClick={() => setRequestType(key)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    padding: '16px 12px',
+                    borderRadius: 14,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    transition: 'all 0.2s ease-in-out',
+                    border: active ? '1px solid #1AABDB' : '1px solid var(--card-border)',
+                    cursor: 'pointer',
+                    background: active ? 'rgba(26,171,219,0.08)' : 'var(--card-bg)',
+                    color: active ? '#1AABDB' : 'var(--text-secondary)',
+                    boxShadow: active ? '0 4px 12px rgba(26,171,219,0.12)' : 'none',
+                  }}>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: active ? '#1AABDB' : 'var(--surface2, rgba(0,0,0,0.03))',
+                    color: active ? '#fff' : 'var(--text-muted)',
+                    transition: 'all 0.2s'
+                  }}>
+                    {icon}
+                  </div>
+                  <span>{label}</span>
+                </button>
+              )
+            })}
           </div>
 
           {/* Form card */}
@@ -437,7 +462,8 @@ function EmployeeLeave() {
                       background: 'rgba(245,158,11,0.1)', color: '#D97706',
                       border: '1px solid rgba(245,158,11,0.2)', alignSelf: 'flex-start'
                     }}>
-                      ⏱ {previewHours} permission
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      <span>{previewHours} permission</span>
                     </div>
                   )}
                 </>
@@ -523,7 +549,8 @@ function EmployeeLeave() {
                       </div>
                       {previewHours && (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 10, padding: '6px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: 'rgba(139,92,246,0.1)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.2)' }}>
-                          ⏱ {previewHours} on duty
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          <span>{previewHours} on duty</span>
                         </div>
                       )}
                     </div>
@@ -647,36 +674,111 @@ function EmployeeLeave() {
                 <p style={{ fontSize: 14, margin: 0, color: 'var(--text-secondary)' }}>No requests yet</p>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                      {['Date / Time', 'Type', 'Reason', 'Status'].map(h => (
-                        <th key={h} style={{ textAlign: 'left', fontSize: 12, fontWeight: 600, padding: '12px 24px', color: 'var(--text-secondary)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {myLeaves.map(leave => {
-                      const type         = resolveType(leave)
-                      const cfg          = TYPE_CONFIG[type]
-                      const fromDate     = leave.fromDate || leave.date
-                      const toDate       = leave.toDate   || leave.date
-                      const isPermRecord = type === 'Permission'
-                      const isODRecord   = type === 'On Duty'
-                      const hasTime      = (isPermRecord || isODRecord) && leave.fromTime && leave.toTime
-                      const days         = getDayCount(fromDate, toDate, leave.isHalfDay)
-                      const hours        = hasTime ? calcHours(leave.fromTime, leave.toTime) : null
-                      const holiday      = getHolidayForDate(fromDate, holidays)
+              <>
+                {/* Desktop view */}
+                <div className="leave-history-desktop" style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
+                        {['Date / Time', 'Type', 'Reason', 'Status'].map(h => (
+                          <th key={h} style={{ textAlign: 'left', fontSize: 12, fontWeight: 600, padding: '12px 24px', color: 'var(--text-secondary)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myLeaves.map(leave => {
+                        const type         = resolveType(leave)
+                        const cfg          = TYPE_CONFIG[type]
+                        const fromDate     = leave.fromDate || leave.date
+                        const toDate       = leave.toDate   || leave.date
+                        const isPermRecord = type === 'Permission'
+                        const isODRecord   = type === 'On Duty'
+                        const hasTime      = (isPermRecord || isODRecord) && leave.fromTime && leave.toTime
+                        const days         = getDayCount(fromDate, toDate, leave.isHalfDay)
+                        const hours        = hasTime ? calcHours(leave.fromTime, leave.toTime) : null
+                        const holiday      = getHolidayForDate(fromDate, holidays)
 
-                      return (
-                        <tr key={leave.id}
-                          style={{ borderBottom: '1px solid var(--card-border)', transition: 'background 0.15s' }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(26,171,219,0.03)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        return (
+                          <tr key={leave.id}
+                            style={{ borderBottom: '1px solid var(--card-border)', transition: 'background 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(26,171,219,0.03)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
 
-                          <td style={{ padding: '16px 24px' }}>
-                            <p style={{ fontSize: 13, fontWeight: 600, margin: '0 0 2px', color: 'var(--text-primary)' }}>
+                            <td style={{ padding: '16px 24px' }}>
+                              <p style={{ fontSize: 13, fontWeight: 600, margin: '0 0 2px', color: 'var(--text-primary)' }}>
+                                {formatDateIN(fromDate)}
+                                {holiday && (
+                                  <span style={{
+                                    marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 9999,
+                                    background: HOLIDAY_COLORS[holiday.type]?.bg, color: HOLIDAY_COLORS[holiday.type]?.color,
+                                  }}>🎉 {holiday.name}</span>
+                                )}
+                              </p>
+                              {hasTime ? (
+                                <p style={{ fontSize: 12, margin: 0, fontWeight: 600, color: isPermRecord ? '#F59E0B' : '#8B5CF6' }}>
+                                  {leave.fromTime} – {leave.toTime}
+                                  {hours && <span style={{ marginLeft: 6, opacity: 0.7 }}>({hours})</span>}
+                                </p>
+                              ) : !isPermRecord && fromDate !== toDate ? (
+                                <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>
+                                  to {formatDateIN(toDate)} · <span style={{ color: '#1AABDB', fontWeight: 600 }}>{days}d</span>
+                                </p>
+                              ) : (
+                                <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>
+                                  {leave.isHalfDay ? `Half day (${leave.halfDaySession})` : '1 day'}
+                                </p>
+                              )}
+                            </td>
+
+                            <td style={{ padding: '16px 24px' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+                                {cfg.label}
+                              </span>
+                            </td>
+
+                            <td style={{ padding: '16px 24px', fontSize: 14, maxWidth: 200, color: 'var(--text-secondary)' }}>
+                              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leave.reason}>
+                                {leave.reason}
+                              </span>
+                            </td>
+
+                            <td style={{ padding: '16px 24px' }}>
+                              <span style={{ padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, ...statusStyle(leave.status) }}>
+                                {leave.status}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards View */}
+                <div className="leave-history-mobile">
+                  {myLeaves.map(leave => {
+                    const type         = resolveType(leave)
+                    const cfg          = TYPE_CONFIG[type]
+                    const fromDate     = leave.fromDate || leave.date
+                    const toDate       = leave.toDate   || leave.date
+                    const isPermRecord = type === 'Permission'
+                    const isODRecord   = type === 'On Duty'
+                    const hasTime      = (isPermRecord || isODRecord) && leave.fromTime && leave.toTime
+                    const days         = getDayCount(fromDate, toDate, leave.isHalfDay)
+                    const hours        = hasTime ? calcHours(leave.fromTime, leave.toTime) : null
+                    const holiday      = getHolidayForDate(fromDate, holidays)
+
+                    return (
+                      <div key={leave.id} style={{
+                        padding: '16px',
+                        borderBottom: '1px solid var(--card-border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 2px', color: 'var(--text-primary)' }}>
                               {formatDateIN(fromDate)}
                               {holiday && (
                                 <span style={{
@@ -687,47 +789,49 @@ function EmployeeLeave() {
                             </p>
                             {hasTime ? (
                               <p style={{ fontSize: 12, margin: 0, fontWeight: 600, color: isPermRecord ? '#F59E0B' : '#8B5CF6' }}>
-                                {leave.fromTime} – {leave.toTime}
-                                {hours && <span style={{ marginLeft: 6, opacity: 0.7 }}>({hours})</span>}
+                                {leave.fromTime} – {leave.toTime} {hours && `(${hours})`}
                               </p>
                             ) : !isPermRecord && fromDate !== toDate ? (
-                              <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>
+                              <p style={{ fontSize: 12, margin: 0, color: 'var(--text-secondary)' }}>
                                 to {formatDateIN(toDate)} · <span style={{ color: '#1AABDB', fontWeight: 600 }}>{days}d</span>
                               </p>
                             ) : (
-                              <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>
+                              <p style={{ fontSize: 12, margin: 0, color: 'var(--text-secondary)' }}>
                                 {leave.isHalfDay ? `Half day (${leave.halfDaySession})` : '1 day'}
                               </p>
                             )}
-                          </td>
+                          </div>
+                          <span style={{ padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, ...statusStyle(leave.status) }}>
+                            {leave.status}
+                          </span>
+                        </div>
 
-                          <td style={{ padding: '16px 24px' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
-                              {cfg.label}
-                            </span>
-                          </td>
-
-                          <td style={{ padding: '16px 24px', fontSize: 14, maxWidth: 200, color: 'var(--text-secondary)' }}>
-                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leave.reason}>
-                              {leave.reason}
-                            </span>
-                          </td>
-
-                          <td style={{ padding: '16px 24px' }}>
-                            <span style={{ padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, ...statusStyle(leave.status) }}>
-                              {leave.status}
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+                            {cfg.label}
+                          </span>
+                          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leave.reason}>
+                            {leave.reason}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )
+          }
           </div>
         </>
       )}
+      <style>{`
+        .leave-history-mobile { display: block; }
+        .leave-history-desktop { display: none; }
+        @media (min-width: 768px) {
+          .leave-history-mobile { display: none; }
+          .leave-history-desktop { display: block; }
+        }
+      `}</style>
     </div>
   )
 }

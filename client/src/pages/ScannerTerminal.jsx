@@ -25,14 +25,31 @@ export default function ScannerTerminal() {
   const from = searchParams.get('from')
   const navigate = useNavigate()
 
+  const [settings, setSettings] = useState(null)
+
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
 
   useEffect(() => {
+    axios.get(`${BASE_URL}/api/settings`)
+      .then(res => setSettings(res.data))
+      .catch(e => console.error('Failed to load settings', e))
     return () => { stopScanner() }
   }, [])
+
+  const formatTimeStr = (str) => {
+    if (!str) return ''
+    const [h, m] = str.split(':').map(Number)
+    if (isNaN(h) || isNaN(m)) return str
+    const ampm = h >= 12 ? 'PM' : 'AM'
+    const hr = h % 12 || 12
+    const min = String(m).padStart(2, '0')
+    return `${hr}:${min} ${ampm}`
+  }
+
+  const lateAfterStr = settings?.lateAfter || '10:15'
 
   const stopScanner = async () => {
     if (html5QrRef.current) {
@@ -96,7 +113,29 @@ export default function ScannerTerminal() {
 
   const handleScan = async (barcodeId) => {
     try {
-      const res = await axios.post(`${BASE_URL}/api/attendance/scan`, { barcodeId })
+      let latitude = null
+      let longitude = null
+      if (navigator.geolocation) {
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0
+            })
+          })
+          latitude = position.coords.latitude
+          longitude = position.coords.longitude
+        } catch (geoError) {
+          console.warn('Geolocation failed or denied:', geoError)
+        }
+      }
+
+      const res = await axios.post(`${BASE_URL}/api/attendance/scan`, {
+        barcodeId,
+        latitude,
+        longitude
+      })
       const { employee, attendance, type, hoursWorked, overtimeMinutes } = res.data
       const name = employee?.name || barcodeId
 
@@ -113,7 +152,7 @@ export default function ScannerTerminal() {
         setMessage(`Worked ${hoursWorked}h · ${otText}`)
       } else if (attendance?.status === 'Late') {
         setStatus(STATUS_LATE)
-        setMessage('Checked in — Late (after 10:00 AM)')
+        setMessage(`Checked in — Late (after ${formatTimeStr(lateAfterStr)})`)
       } else {
         setStatus(STATUS_SUCCESS)
         setMessage('Checked in successfully')
@@ -147,7 +186,10 @@ export default function ScannerTerminal() {
   const formatDate = (d) =>
     d.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
-  const isAfterCutoff = time.getHours() > 10 || (time.getHours() === 10 && time.getMinutes() >= 0)
+  const [lateHour, lateMin] = lateAfterStr.split(':').map(Number)
+  const isAfterCutoff = !isNaN(lateHour) && !isNaN(lateMin)
+    ? (time.getHours() > lateHour || (time.getHours() === lateHour && time.getMinutes() >= lateMin))
+    : false
 
   return (
     <div style={{
@@ -192,7 +234,7 @@ export default function ScannerTerminal() {
               fontSize: '0.75rem', fontWeight: 600,
               background: 'rgba(234,179,8,0.12)', color: '#EAB308', border: '1px solid rgba(234,179,8,0.2)'
             }}>
-              ⚠ After 10:00 AM — will be marked Late
+              ⚠ After {formatTimeStr(lateAfterStr)} — will be marked Late
             </div>
           )}
         </div>

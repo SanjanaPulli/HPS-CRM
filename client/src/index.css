@@ -1,4 +1,5 @@
-﻿@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
 
 :root {
   --hps-blue: #1AABDB;
@@ -6,16 +7,54 @@
   --hps-light: #E8F7FC;
 }
 
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
 html, body, #root {
   overflow-x: hidden;
   max-width: 100vw;
+  min-height: 100vh;
 }
 
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
+/* Thin modern scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(26, 171, 219, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(26, 171, 219, 0.45);
+}
+
 #qr-reader__dashboard { display: none !important; }
 #qr-reader__scan_region { border: none !important; background: transparent !important; }
 #qr-reader img { display: none !important; }
 #qr-reader { border: none !important; }
+
+/* Micro-animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

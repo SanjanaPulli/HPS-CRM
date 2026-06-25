@@ -4,13 +4,15 @@ const {
   submitLeave,
   getAllLeaves,
   getLeaveByEmployee,
-  updateLeaveStatus, deleteLeave
+  updateLeaveStatus,
+  deleteLeave
 } = require('../controllers/leave_c')
+const { verifyAdmin } = require('../utils/auth')
 
 router.post('/', submitLeave)
-router.get('/', getAllLeaves)
+router.get('/', verifyAdmin, getAllLeaves)
 router.get('/:empId', getLeaveByEmployee)
-router.put('/:id', updateLeaveStatus)
-router.delete('/:id', deleteLeave)
+router.put('/:id', verifyAdmin, updateLeaveStatus)
+router.delete('/:id', verifyAdmin, deleteLeave)
 
 module.exports = router

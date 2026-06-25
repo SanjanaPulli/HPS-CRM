@@ -71,7 +71,7 @@ const RoleIcon = ({ role }) => {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const [stats, setStats] = useState({ total: 0, present: 0, pending: 0 });
+  const [stats, setStats] = useState({ total: 0, present: 0, pending: 0, wfh: 0 });
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
@@ -97,10 +97,24 @@ export default function Dashboard() {
         const employees  = await empRes.json();
         const attendance = await attRes.json();
         const leaves     = await leaveRes.json();
+
+        const today = new Date();
+        const todayTime = today.setHours(0, 0, 0, 0);
+
+        const wfhCount = Array.isArray(leaves) ? leaves.filter(l => {
+          if (l.status !== 'Approved' || l.type !== 'WFH') return false;
+          const start = new Date(l.fromDate || l.date);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(l.toDate || l.fromDate || l.date);
+          end.setHours(0, 0, 0, 0);
+          return todayTime >= start.getTime() && todayTime <= end.getTime();
+        }).length : 0;
+
         setStats({
           total:   Array.isArray(employees)  ? employees.length : 0,
           present: Array.isArray(attendance) ? attendance.filter(a => a.status === "Present" || a.status === "Late").length : 0,
           pending: Array.isArray(leaves)     ? leaves.filter(l => l.status === "Pending").length : 0,
+          wfh:     wfhCount,
         });
       } catch (err) {
         console.error("Dashboard fetch error:", err);
@@ -126,10 +140,18 @@ export default function Dashboard() {
       <polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/>
     </svg>
   );
+  const LaptopIcon = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+      <line x1="2" y1="20" x2="22" y2="20"/>
+      <line x1="12" y1="17" x2="12" y2="20"/>
+    </svg>
+  );
 
   const statCards = [
     { icon: UsersIcon, value: stats.total,   label: "Total Employees",       iconBg: "#E8F7FD", iconColor: "#1AABDB" },
     { icon: CheckIcon, value: stats.present, label: "Present Today",          iconBg: "#E6F7F0", iconColor: "#10B981" },
+    { icon: LaptopIcon, value: stats.wfh,    label: "WFH Today",             iconBg: "#EBF5FF", iconColor: "#3B82F6" },
     { icon: FileIcon,  value: stats.pending, label: "Pending Leave Requests", iconBg: "#FFF7E6", iconColor: "#F59E0B" },
   ];
 
@@ -219,7 +241,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 20, marginBottom: 32 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 32 }}>
         {statCards.map((card, i) => <StatCard key={i} {...card} />)}
       </div>
 

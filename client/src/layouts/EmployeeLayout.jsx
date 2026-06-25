@@ -46,16 +46,24 @@ function EmployeeLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { theme, toggleTheme } = useTheme()
-  const [collapsed, setCollapsed] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false)
+  const [collapsed, setCollapsed] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false)
   const [isMobile, setIsMobile]   = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showMore, setShowMore] = useState(false)
 
   useEffect(() => {
+    let prevWidth = window.innerWidth
     const handleResize = () => {
-      const mobile = window.innerWidth < 768
+      const currentWidth = window.innerWidth
+      const mobile = currentWidth < 768
       setIsMobile(mobile)
-      setCollapsed(mobile)
+      
+      if (currentWidth < 1024 && prevWidth >= 1024) {
+        setCollapsed(true)
+      } else if (currentWidth >= 1024 && prevWidth < 1024) {
+        setCollapsed(false)
+      }
+      prevWidth = currentWidth
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
@@ -136,7 +144,7 @@ function EmployeeLayout() {
   return (
     <div style={{
       display: 'flex', minHeight: '100vh', transition: 'background 0.3s',
-      background: 'var(--bg)', fontFamily: "'Segoe UI', system-ui, sans-serif"
+      background: 'var(--bg)'
     }}>
 
       {/* ── Desktop Sidebar ── */}
@@ -484,18 +492,22 @@ function EmployeeLayout() {
                 width: '100%', textAlign: 'left', padding: '16px 0',
                 borderBottom: '1px solid var(--card-border)', fontSize: '0.875rem',
                 background: 'none', border: 'none', borderBottom: '1px solid var(--card-border)',
-                cursor: 'pointer', color: 'var(--text-primary)'
+                cursor: 'pointer', color: 'var(--text-primary)',
+                display: 'flex', alignItems: 'center', gap: 8
               }}>
-              👤 My Profile
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              My Profile
             </button>
             <button
               onClick={handleLogout}
               style={{
                 width: '100%', textAlign: 'left', padding: '16px 0',
                 fontSize: '0.875rem', background: 'none', border: 'none',
-                cursor: 'pointer', color: '#EF4444'
+                cursor: 'pointer', color: '#EF4444',
+                display: 'flex', alignItems: 'center', gap: 8
               }}>
-              🚪 Logout
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Logout
             </button>
           </div>
         </div>

@@ -17,8 +17,6 @@ model Employee {
   contact            String?
   joiningDate        String?
   salary             String?         @default("Not Disclosed")
-  project            String?
-  projectStatus      String?
   teamLead           String?
   dailyWorkStatus    String?
   photo              String?
@@ -27,9 +25,6 @@ model Employee {
   isAttendanceLeader Boolean         @default(false)
   attendance         Attendance[]
   leaveRequest       LeaveRequest[]
-  projects           Project[]
-  ledProjects        Project[]       @relation("ProjectTeamLead")
-  projectMembers     ProjectMember[]
 }
 
 model Attendance {
@@ -75,16 +70,29 @@ model Announcement {
 
 model OfficeSetting {
   id            Int      @id @default(autoincrement())
-  checkInTime   String   @default("09:00")
-  checkOutTime  String   @default("18:00")
-  lateAfter     String   @default("09:15")
+  checkInTime   String   @default("09:30")
+  checkOutTime  String   @default("17:30")
+  lateAfter     String   @default("10:15")
   halfDayBefore String   @default("13:00")
   workingDays   String   @default("Mon,Tue,Wed,Thu,Fri,Sat")
   officeName    String   @default("HPS Pvt Ltd")
   officeAddress String   @default("")
   officePhone   String   @default("")
   officeEmail   String   @default("")
+  latitude      Float?
+  longitude     Float?
+  radiusMeter   Float?
+  allowedIps    String?
   updatedAt     DateTime @updatedAt
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String   // Hashed password
+  name      String
+  role      String   @default("admin") // admin | manager | hr
+  createdAt DateTime @default(now())
 }
 
 model ActivityLog {
@@ -110,51 +118,6 @@ model Notification {
   createdAt DateTime @default(now())
 }
 
-model Project {
-  id          Int               @id @default(autoincrement())
-  empId       String
-  name        String
-  status      String            @default("Planning")
-  assignedBy  String
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  description String?
-  priority    String            @default("medium")
-  startDate   DateTime?
-  endDate     DateTime?
-  progress    Int               @default(0)
-  budget      String?
-  category    String?
-  teamLeadId  String?
-  employee    Employee          @relation(fields: [empId], references: [empId], onDelete: Cascade)
-  teamLead    Employee?         @relation("ProjectTeamLead", fields: [teamLeadId], references: [empId])
-  documents   ProjectDocument[]
-  members     ProjectMember[]
-}
-
-model ProjectMember {
-  id        Int      @id @default(autoincrement())
-  projectId Int
-  empId     String
-  role      String   @default("member")
-  createdAt DateTime @default(now())
-  employee  Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, empId])
-}
-
-model ProjectDocument {
-  id           Int      @id @default(autoincrement())
-  projectId    Int
-  filename     String
-  originalName String
-  mimetype     String
-  size         Int
-  uploadedBy   String
-  createdAt    DateTime @default(now())
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-}
 model Holiday {
   id        Int      @id @default(autoincrement())
   date      DateTime

@@ -152,7 +152,7 @@ function PasswordField({ label, name, value, onChange, show, onToggle, placehold
 
 // ─── TAB: Office Settings ─────────────────────────────────────────────────────
 function OfficeTab() {
-  const defaultOffice = { checkInTime: '09:30', checkOutTime: '17:30', lateAfter: '10:00', halfDayBefore: '13:00', workingDays: 'Mon,Tue,Wed,Thu,Fri,Sat', officeName: 'HPS Pvt Ltd', officeAddress: '', officePhone: '', officeEmail: '' }
+  const defaultOffice = { checkInTime: '09:30', checkOutTime: '17:30', lateAfter: '10:15', halfDayBefore: '13:00', workingDays: 'Mon,Tue,Wed,Thu,Fri,Sat', officeName: 'HPS Pvt Ltd', officeAddress: '', officePhone: '', officeEmail: '' }
   const [form, setForm] = useState(defaultOffice)
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
@@ -222,15 +222,18 @@ function OfficeTab() {
             background: 'rgba(26,171,219,0.06)', border: '1px solid rgba(26,171,219,0.15)',
             fontSize: '0.8rem', color: 'var(--text-secondary)'
           }}>
-            📊 Standard shift: <strong style={{ color: '#1AABDB' }}>{form.checkInTime} – {form.checkOutTime}</strong>
-            {' '}·{' '}
-            {(() => {
-              const [ih, im] = form.checkInTime.split(':').map(Number)
-              const [oh, om] = form.checkOutTime.split(':').map(Number)
-              const hrs = ((oh * 60 + om) - (ih * 60 + im)) / 60
-              return <strong style={{ color: '#1AABDB' }}>{hrs}h standard</strong>
-            })()}
-            {' '}· Late after <strong style={{ color: '#EAB308' }}>{form.lateAfter}</strong>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#1AABDB' }}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span>Standard shift: <strong style={{ color: '#1AABDB' }}>{form.checkInTime} – {form.checkOutTime}</strong></span>
+              {' '}·{' '}
+              {(() => {
+                const [ih, im] = form.checkInTime.split(':').map(Number)
+                const [oh, om] = form.checkOutTime.split(':').map(Number)
+                const hrs = ((oh * 60 + om) - (ih * 60 + im)) / 60
+                return <strong style={{ color: '#1AABDB' }}>{hrs}h standard</strong>
+              })()}
+              {' '}· Late after <strong style={{ color: '#EAB308' }}>{form.lateAfter}</strong>
+            </div>
           </div>
         )}
       </CardSection>

@@ -116,7 +116,7 @@ function EmployeeProfile() {
   )
 
   return (
-    <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+    <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: '1000px', margin: '0 auto' }}>
 
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>

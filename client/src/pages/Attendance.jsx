@@ -64,7 +64,125 @@ function Attendance() {
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [togglingId,   setTogglingId]   = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [settings, setSettings] = useState(null)
   const { theme } = useTheme()
+
+  const [editingRecord, setEditingRecord] = useState(null)
+  const [editForm, setEditForm] = useState({
+    status: '',
+    checkInTimeStr: '',
+    checkOutTimeStr: '',
+    hoursWorked: '',
+    overtimeMinutes: ''
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deletingRecord, setDeletingRecord] = useState(false)
+
+  const getISTTimeStr = (dateVal) => {
+    if (!dateVal) return ''
+    const date = new Date(dateVal)
+    const istOffset = 5.5 * 60 * 60 * 1000
+    const istDate = new Date(date.getTime() + istOffset)
+    const hours = String(istDate.getUTCHours()).padStart(2, '0')
+    const minutes = String(istDate.getUTCMinutes()).padStart(2, '0')
+    return `${hours}:${minutes}`
+  }
+
+  const openEditModal = (record) => {
+    setEditingRecord(record)
+    setEditForm({
+      status: record.status,
+      checkInTimeStr: getISTTimeStr(record.checkInTime || record.timestamp),
+      checkOutTimeStr: getISTTimeStr(record.checkOutTime),
+      hoursWorked: record.hoursWorked != null ? String(record.hoursWorked) : '',
+      overtimeMinutes: record.overtimeMinutes != null ? String(record.overtimeMinutes) : ''
+    })
+  }
+
+  const handleTimeChange = (type, value) => {
+    setEditForm(prev => {
+      const updated = { ...prev, [type]: value }
+      const calc = calculateHoursAndOT(updated.checkInTimeStr, updated.checkOutTimeStr)
+      return { ...updated, hoursWorked: calc.hours, overtimeMinutes: calc.ot }
+    })
+  }
+
+  const calculateHoursAndOT = (checkInStr, checkOutStr) => {
+    if (!checkInStr || !checkOutStr) return { hours: '', ot: '' }
+    const partsIn = checkInStr.split(':')
+    const partsOut = checkOutStr.split(':')
+    if (partsIn.length < 2 || partsOut.length < 2) return { hours: '', ot: '' }
+
+    const inH = Number(partsIn[0])
+    const inM = Number(partsIn[1])
+    const outH = Number(partsOut[0])
+    const outM = Number(partsOut[1])
+
+    if (isNaN(inH) || isNaN(inM) || isNaN(outH) || isNaN(outM)) {
+      return { hours: '', ot: '' }
+    }
+
+    const checkInMins = inH * 60 + inM
+    const checkOutMins = outH * 60 + outM
+
+    let diffMins = checkOutMins - checkInMins
+    if (diffMins < 0) diffMins += 24 * 60
+
+    const calculatedHours = diffMins / 60
+    const roundedHours = Math.round(calculatedHours * 100) / 100
+
+    let standardHours = 8
+    if (settings && settings.checkInTime && settings.checkOutTime) {
+      const [sih, sim] = settings.checkInTime.split(':').map(Number)
+      const [soh, som] = settings.checkOutTime.split(':').map(Number)
+      if (!isNaN(sih) && !isNaN(sim) && !isNaN(soh) && !isNaN(som)) {
+        standardHours = ((soh * 60 + som) - (sih * 60 + sim)) / 60
+      }
+    }
+    const calculatedOT = Math.round((roundedHours - standardHours) * 60)
+
+    return {
+      hours: String(roundedHours),
+      ot: String(calculatedOT)
+    }
+  }
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault()
+    if (!editingRecord) return
+    setSavingEdit(true)
+    try {
+      const payload = {
+        status: editForm.status,
+        checkInTimeStr: editForm.checkInTimeStr || null,
+        checkOutTimeStr: editForm.checkOutTimeStr || null,
+        hoursWorked: editForm.hoursWorked === '' ? null : parseFloat(editForm.hoursWorked),
+        overtimeMinutes: editForm.overtimeMinutes === '' ? null : parseInt(editForm.overtimeMinutes)
+      }
+      await axios.put(`${BASE_URL}/api/attendance/${editingRecord.id}`, payload)
+      setEditingRecord(null)
+      fetchData(selectedDate)
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to save attendance edits')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const handleDeleteRecord = async () => {
+    if (!editingRecord) return
+    if (!window.confirm(`Are you sure you want to delete this attendance record for ${editingRecord.employee.name}?`)) return
+    setDeletingRecord(true)
+    try {
+      await axios.delete(`${BASE_URL}/api/attendance/${editingRecord.id}`)
+      setEditingRecord(null)
+      fetchData(selectedDate)
+    } catch (err) {
+      alert('Failed to delete attendance record')
+    } finally {
+      setDeletingRecord(false)
+    }
+  }
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
@@ -73,7 +191,17 @@ function Attendance() {
   }, [])
 
   useEffect(() => { fetchData(selectedDate) }, [selectedDate])
-  useEffect(() => { fetchEmployees() }, [])
+  useEffect(() => {
+    fetchEmployees()
+    fetchSettings()
+  }, [])
+
+  const fetchSettings = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/settings`)
+      setSettings(res.data)
+    } catch { console.error('Failed to fetch settings') }
+  }
 
   const fetchData = async (date) => {
     setLoading(true)
@@ -289,19 +417,31 @@ function Attendance() {
           </div>
         )}
 
-        {/* Leader toggle */}
-        <div style={{ paddingTop: 8, borderTop: '1px solid var(--card-border)' }}>
+        {/* Actions row */}
+        <div style={{ paddingTop: 8, borderTop: '1px solid var(--card-border)', display: 'flex', gap: 8 }}>
           <button
             onClick={() => toggleLeader(record.empId, isLeader)}
             disabled={isToggling}
             style={{
-              width: '100%', fontSize: 12, fontWeight: 600, padding: '8px 0', borderRadius: 12,
+              flex: 1, fontSize: 12, fontWeight: 600, padding: '8px 0', borderRadius: 12,
               cursor: isToggling ? 'not-allowed' : 'pointer', transition: 'all 0.15s', opacity: isToggling ? 0.5 : 1,
               background: isLeader ? 'rgba(26,171,219,0.12)' : 'var(--surface2)',
               color:      isLeader ? '#1AABDB' : 'var(--text-muted)',
               border:     isLeader ? '1px solid rgba(26,171,219,0.3)' : '1px solid var(--card-border)',
             }}>
             {isLeader ? '★ Leader' : '☆ Set Leader'}
+          </button>
+          <button
+            onClick={() => openEditModal(record)}
+            style={{
+              flex: 1, fontSize: 12, fontWeight: 600, padding: '8px 0', borderRadius: 12,
+              cursor: 'pointer', transition: 'all 0.15s',
+              background: 'rgba(26,171,219,0.08)', color: '#1AABDB',
+              border: '1px solid rgba(26,171,219,0.2)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4
+            }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
           </button>
         </div>
       </div>
@@ -397,21 +537,35 @@ function Attendance() {
           )}
         </td>
 
-        {/* Scan access */}
+        {/* Actions */}
         <td style={{ padding: '16px 24px' }}>
-          <button
-            onClick={() => toggleLeader(record.empId, isLeader)}
-            disabled={isToggling}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 12,
-              cursor: isToggling ? 'not-allowed' : 'pointer', transition: 'all 0.15s', opacity: isToggling ? 0.5 : 1,
-              background: isLeader ? 'rgba(26,171,219,0.12)' : 'var(--surface2)',
-              color:      isLeader ? '#1AABDB' : 'var(--text-muted)',
-              border:     isLeader ? '1px solid rgba(26,171,219,0.3)' : '1px solid var(--card-border)',
-            }}>
-            {isLeader ? '★ Leader' : '☆ Set Leader'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => toggleLeader(record.empId, isLeader)}
+              disabled={isToggling}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 12,
+                cursor: isToggling ? 'not-allowed' : 'pointer', transition: 'all 0.15s', opacity: isToggling ? 0.5 : 1,
+                background: isLeader ? 'rgba(26,171,219,0.12)' : 'var(--surface2)',
+                color:      isLeader ? '#1AABDB' : 'var(--text-muted)',
+                border:     isLeader ? '1px solid rgba(26,171,219,0.3)' : '1px solid var(--card-border)',
+              }}>
+              {isLeader ? '★ Leader' : '☆ Set Leader'}
+            </button>
+            <button
+              onClick={() => openEditModal(record)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 12,
+                cursor: 'pointer', transition: 'all 0.15s',
+                background: 'rgba(26,171,219,0.08)', color: '#1AABDB',
+                border: '1px solid rgba(26,171,219,0.2)',
+              }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit
+            </button>
+          </div>
         </td>
       </tr>
     )
@@ -579,22 +733,174 @@ function Attendance() {
                         <RankBadge rankNum={rankNum} />
                         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>{rows.length} record{rows.length !== 1 ? 's' : ''}</span>
                       </div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        {tableHead}<tbody>{rows.map(renderRow)}</tbody>
-                      </table>
+                      <div style={{ overflowX: 'auto', width: '100%' }}>
+                        <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse' }}>
+                          {tableHead}<tbody>{rows.map(renderRow)}</tbody>
+                        </table>
+                      </div>
                     </div>
                   )
                 })}
               </div>
             ) : (
               <div style={{ borderRadius: 24, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  {tableHead}<tbody>{sortedFiltered.map(renderRow)}</tbody>
-                </table>
+                <div style={{ overflowX: 'auto', width: '100%' }}>
+                  <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse' }}>
+                    {tableHead}<tbody>{sortedFiltered.map(renderRow)}</tbody>
+                  </table>
+                </div>
               </div>
             )
           )}
         </>
+      )}
+
+      {/* ── EDIT ATTENDANCE MODAL ── */}
+      {editingRecord && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 999,
+          background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+        }} onClick={() => setEditingRecord(null)}>
+
+          <div style={{
+            background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+            borderRadius: 20, padding: 24, width: '100%', maxWidth: 440,
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            position: 'relative'
+          }} onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Edit Attendance</h3>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                  {editingRecord.employee.name} ({editingRecord.empId})
+                </p>
+              </div>
+              <button onClick={() => setEditingRecord(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Status */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13,
+                    background: 'var(--input-bg)', color: 'var(--text-primary)',
+                    border: '1px solid var(--input-border)', outline: 'none'
+                  }}
+                >
+                  {['Present', 'Late', 'Absent', 'WFH', 'On Duty', 'Leave', 'Permission'].map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Time inputs (side by side) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Check In (IST)</label>
+                  <input
+                    type="time"
+                    value={editForm.checkInTimeStr}
+                    onChange={e => handleTimeChange('checkInTimeStr', e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13,
+                      background: 'var(--input-bg)', color: 'var(--text-primary)',
+                      border: '1px solid var(--input-border)', outline: 'none', boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Check Out (IST)</label>
+                  <input
+                    type="time"
+                    value={editForm.checkOutTimeStr}
+                    onChange={e => handleTimeChange('checkOutTimeStr', e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13,
+                      background: 'var(--input-bg)', color: 'var(--text-primary)',
+                      border: '1px solid var(--input-border)', outline: 'none', boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Hours & Overtime */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Hours Worked</label>
+                  <input
+                    type="number" step="0.01"
+                    value={editForm.hoursWorked}
+                    onChange={e => setEditForm(prev => ({ ...prev, hoursWorked: e.target.value }))}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13,
+                      background: 'var(--input-bg)', color: 'var(--text-primary)',
+                      border: '1px solid var(--input-border)', outline: 'none', boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Overtime (mins)</label>
+                  <input
+                    type="number"
+                    value={editForm.overtimeMinutes}
+                    onChange={e => setEditForm(prev => ({ ...prev, overtimeMinutes: e.target.value }))}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13,
+                      background: 'var(--input-bg)', color: 'var(--text-primary)',
+                      border: '1px solid var(--input-border)', outline: 'none', boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleDeleteRecord}
+                  disabled={deletingRecord}
+                  style={{
+                    padding: '10px 16px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                    fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,0.08)', color: '#EF4444'
+                  }}
+                >
+                  {deletingRecord ? 'Deleting…' : '🗑 Delete'}
+                </button>
+                <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditingRecord(null)}
+                    style={{
+                      padding: '10px 16px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                      fontSize: 13, fontWeight: 600, background: 'var(--surface2)', color: 'var(--text-secondary)'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingEdit}
+                    style={{
+                      padding: '10px 20px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                      fontSize: 13, fontWeight: 600, background: '#1AABDB', color: '#fff'
+                    }}
+                  >
+                    {savingEdit ? 'Saving…' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )

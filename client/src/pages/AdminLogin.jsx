@@ -27,6 +27,7 @@ export default function AdminLogin() {
         localStorage.setItem("adminAuth", "true");
         localStorage.setItem("adminName", data.name);  // "Admin" or "Manager"
         localStorage.setItem("role", role);             // "admin" or "manager"
+        localStorage.setItem("adminToken", data.token); // Save JWT token
 
         navigate("/admin/dashboard");
       } else {

@@ -191,52 +191,93 @@ export default function Reports() {
       </div>
 
       {/* ── Month + Year pickers ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* Month strip */}
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{
-            display: 'flex', width: 'max-content',
-            borderRadius: 12, overflow: 'hidden',
-            border: '1px solid var(--card-border)', background: 'var(--card-bg)',
-          }}>
-            {MONTHS.map((m, i) => (
-              <button
-                key={m}
-                onClick={() => setSelectedMonth(i)}
-                style={{
-                  padding: '8px 13px', fontSize: 12, fontWeight: 600,
-                  whiteSpace: 'nowrap', border: 'none', cursor: 'pointer',
-                  transition: 'background 0.15s',
-                  background: selectedMonth === i ? '#1AABDB' : 'transparent',
-                  color:      selectedMonth === i ? '#fff'    : 'var(--text-secondary)',
-                }}
-              >
-                {m.slice(0, 3)}
-              </button>
-            ))}
+      <div className="report-pickers-container">
+        {/* Desktop Strips */}
+        <div className="report-pickers-desktop" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Month strip */}
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{
+              display: 'flex', width: 'max-content',
+              borderRadius: 12, overflow: 'hidden',
+              border: '1px solid var(--card-border)', background: 'var(--card-bg)',
+            }}>
+              {MONTHS.map((m, i) => (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMonth(i)}
+                  style={{
+                    padding: '8px 13px', fontSize: 12, fontWeight: 600,
+                    whiteSpace: 'nowrap', border: 'none', cursor: 'pointer',
+                    transition: 'background 0.15s',
+                    background: selectedMonth === i ? '#1AABDB' : 'transparent',
+                    color:      selectedMonth === i ? '#fff'    : 'var(--text-secondary)',
+                  }}
+                >
+                  {m.slice(0, 3)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Year strip */}
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{
+              display: 'flex', width: 'max-content',
+              borderRadius: 12, overflow: 'hidden',
+              border: '1px solid var(--card-border)', background: 'var(--card-bg)',
+            }}>
+              {YEARS.map(y => (
+                <button
+                  key={y}
+                  onClick={() => setSelectedYear(y)}
+                  style={{
+                    padding: '8px 18px', fontSize: 12, fontWeight: 600,
+                    border: 'none', cursor: 'pointer', transition: 'background 0.15s',
+                    background: selectedYear === y ? '#1AABDB' : 'transparent',
+                    color:      selectedYear === y ? '#fff'    : 'var(--text-secondary)',
+                  }}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Year strip */}
-        <div style={{
-          display: 'flex', width: 'max-content',
-          borderRadius: 12, overflow: 'hidden',
-          border: '1px solid var(--card-border)', background: 'var(--card-bg)',
-        }}>
-          {YEARS.map(y => (
-            <button
-              key={y}
-              onClick={() => setSelectedYear(y)}
+        {/* Mobile Dropdowns */}
+        <div className="report-pickers-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Month</label>
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(parseInt(e.target.value))}
               style={{
-                padding: '8px 18px', fontSize: 12, fontWeight: 600,
-                border: 'none', cursor: 'pointer', transition: 'background 0.15s',
-                background: selectedYear === y ? '#1AABDB' : 'transparent',
-                color:      selectedYear === y ? '#fff'    : 'var(--text-secondary)',
+                width: '100%', padding: '10px 12px', borderRadius: 10,
+                border: '1px solid var(--card-border)', background: 'var(--card-bg)',
+                color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, outline: 'none'
               }}
             >
-              {y}
-            </button>
-          ))}
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Year</label>
+            <select
+              value={selectedYear}
+              onChange={e => setSelectedYear(parseInt(e.target.value))}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 10,
+                border: '1px solid var(--card-border)', background: 'var(--card-bg)',
+                color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, outline: 'none'
+              }}
+            >
+              {YEARS.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -284,7 +325,9 @@ export default function Reports() {
         </div>
       ) : sorted.length === 0 ? (
         <div style={{ borderRadius: 14, padding: '48px 32px', textAlign: 'center', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-          <p style={{ fontSize: 32, margin: '0 0 10px' }}>📊</p>
+          <div style={{ width: 48, height: 48, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(26,171,219,0.08)', color: '#1AABDB', margin: '0 auto 12px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
           <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: '0 0 4px' }}>No data for this period</p>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Try a different month or year</p>
         </div>
@@ -321,8 +364,8 @@ export default function Reports() {
           </div>
 
           {/* ── Desktop table ── */}
-          <div className="report-table" style={{ borderRadius: 14, overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="report-table" style={{ borderRadius: 14, overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--card-border)', overflowX: 'auto', width: '100%' }}>
+            <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'var(--surface2)' }}>
                   {['Employee','Department','Present','Late','Absent','On Leave','Rate'].map(h => (
@@ -387,12 +430,20 @@ export default function Reports() {
         .report-cards { display: flex; flex-direction: column; gap: 10px; }
         .report-table { display: none; }
 
+        .report-pickers-mobile { display: grid !important; }
+        .report-pickers-desktop { display: none !important; }
+
         @media (min-width: 640px) {
           .report-stat-grid {
             grid-template-columns: repeat(4, 1fr);
           }
           .report-cards { display: none; }
           .report-table { display: block; }
+        }
+
+        @media (min-width: 768px) {
+          .report-pickers-mobile { display: none !important; }
+          .report-pickers-desktop { display: flex !important; }
         }
       `}</style>
     </div>
