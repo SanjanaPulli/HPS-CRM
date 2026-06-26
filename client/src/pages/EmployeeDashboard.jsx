@@ -34,6 +34,7 @@ function EmployeeDashboard() {
   const employee = JSON.parse(localStorage.getItem('employeeAuth') || 'null')
   const [attendanceStats, setAttendanceStats] = useState({ present: 0, late: 0, absent: 0, onLeave: 0 })
   const [pendingLeave, setPendingLeave] = useState(0)
+  const [employeeDetails, setEmployeeDetails] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
@@ -47,9 +48,10 @@ function EmployeeDashboard() {
 
   const fetchStats = async () => {
     try {
-      const [attRes, leaveRes] = await Promise.all([
+      const [attRes, leaveRes, empRes] = await Promise.all([
         axios.get(`${BASE_URL}/api/attendance/${employee.empId}`),
         axios.get(`${BASE_URL}/api/leave/${employee.empId}`),
+        axios.get(`${BASE_URL}/api/employees/${employee.empId}`),
       ])
       const records = attRes.data
       setAttendanceStats({
@@ -59,6 +61,7 @@ function EmployeeDashboard() {
         onLeave:  records.filter(r => ['Leave', 'On Leave', 'Half Day'].includes(r.status)).length,
       })
       setPendingLeave(leaveRes.data.filter(l => l.status === 'Pending').length)
+      setEmployeeDetails(empRes.data)
     } catch (err) {
       console.error('Failed to fetch stats', err)
     } finally {
@@ -145,10 +148,15 @@ function EmployeeDashboard() {
           }}>
             Welcome back, {employee.name?.split(' ')[0]}!
           </h2>
-          <p style={{ color: '#94A3B8', fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {employee.position} · {employee.department}
+          <p style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', color: '#94A3B8', fontSize: '0.875rem', marginTop: '4px' }}>
+            <span>{employee.position} · {employee.department}</span>
+            {employeeDetails?.shift && (
+              <span style={{ color: '#1AABDB', background: 'rgba(26,171,219,0.1)', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>
+                Shift: {employeeDetails.shift.name} ({employeeDetails.shift.startTime} - {employeeDetails.shift.endTime})
+              </span>
+            )}
           </p>
-          <p style={{ color: '#64748B', fontSize: '0.75rem', marginTop: '4px' }}>{employee.empId}</p>
+          <p style={{ color: '#64748B', fontSize: '0.75rem', marginTop: '6px' }}>{employee.empId}</p>
         </div>
       </div>
       {/* Scanner CTA — team leads only */}

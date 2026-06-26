@@ -253,7 +253,8 @@ export default function AdminLayout() {
       >
         {/* ── Desktop Sidebar ── */}
         {!isMobile && (
-          <aside
+          <>
+            <aside
             style={{
               width: sidebarW,
               background: "#1C2333",
@@ -300,30 +301,6 @@ export default function AdminLayout() {
                   H
                 </button>
               )}
-              <button
-                onClick={() => setCollapsed(prev => !prev)}
-                style={{
-                  position: "absolute",
-                  right: "-12px",
-                  top: "24px",
-                  zIndex: 40,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 24, height: 24, borderRadius: "50%",
-                  background: "#1C2333",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.7)",
-                  cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-                  transition: "all 0.2s ease-in-out",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#1AABDB"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.transform = "scale(1.1)" }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#1C2333"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.transform = "scale(1)" }}
-              >
-                {collapsed
-                  ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-                  : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-                }
-              </button>
             </div>
 
             {/* Nav links */}
@@ -367,6 +344,33 @@ export default function AdminLayout() {
               />
             </div>
           </aside>
+          
+          {/* Collapse toggle button outside the aside to prevent clipping */}
+          <button
+            onClick={() => setCollapsed(prev => !prev)}
+            style={{
+              position: "fixed",
+              left: collapsed ? "60px" : "228px", // 72px - 12px = 60px, 240px - 12px = 228px
+              top: "24px",
+              zIndex: 40,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 24, height: 24, borderRadius: "50%",
+              background: "#1C2333",
+              border: "1px solid rgba(255,255,255,0.15)",
+              color: "rgba(255,255,255,0.7)",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#1AABDB"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.transform = "scale(1.1)" }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#1C2333"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.transform = "scale(1)" }}
+          >
+            {collapsed
+              ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            }
+          </button>
+          </>
         )}
 
         {/* ── Main content ── */}

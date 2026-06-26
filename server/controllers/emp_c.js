@@ -15,7 +15,8 @@ const getAllEmployees = async (req, res) => {
 const getEmployeeById = async (req, res) => {
   try {
     const employee = await prisma.employee.findUnique({
-      where: { empId: req.params.empId }
+      where: { empId: req.params.empId },
+      include: { shift: true }
     })
     if (!employee) return res.status(404).json({ error: 'Employee not found' })
     res.json(employee)
@@ -124,7 +125,8 @@ const loginEmployee = async (req, res) => {
 
     console.time('findEmployee')
     const employee = await prisma.employee.findUnique({
-      where: { empId }
+      where: { empId },
+      include: { shift: true }
     })
     console.timeEnd('findEmployee')
 

@@ -149,139 +149,143 @@ function EmployeeLayout() {
 
       {/* ── Desktop Sidebar ── */}
       {!isMobile && (
-        <div style={{
-          width: sidebarW, background: '#1C2333', display: 'flex', flexDirection: 'column',
-          flexShrink: 0, position: 'fixed', top: 0, left: 0, height: '100%',
-          zIndex: 30, transition: 'width 0.3s', overflow: 'hidden'
-        }}>
-          {/* Sidebar header */}
+        <>
           <div style={{
-            padding: '20px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            minHeight: '72px', position: 'relative'
+            width: sidebarW, background: '#1C2333', display: 'flex', flexDirection: 'column',
+            flexShrink: 0, position: 'fixed', top: 0, left: 0, height: '100%',
+            zIndex: 30, transition: 'width 0.3s', overflow: 'hidden'
           }}>
-            {!collapsed ? (
-              <button onClick={() => navigate('/employee/dashboard')}
-                style={{ minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginRight: 'auto' }}>
-                <img src="/hps_new_logo_white.png" alt="HPS" style={{ height: '48px', objectFit: 'contain', cursor: 'pointer' }} />
-                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '4px', margin: '4px 0 0' }}>Employee Portal</p>
-              </button>
-            ) : (
-              <button onClick={() => navigate('/employee/dashboard')}
-                style={{
-                  width: '36px', height: '36px', borderRadius: '10px', background: '#1AABDB',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontWeight: 700, fontSize: '0.9rem',
-                  margin: '0 auto', border: 'none', cursor: 'pointer'
-                }}>
-                H
-              </button>
-            )}
-            <button
-              onClick={() => setCollapsed(c => !c)}
-              style={{
-                position: 'absolute',
-                right: '-12px',
-                top: '24px',
-                zIndex: 40,
-                width: '24px', height: '24px', borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s ease-in-out',
-                flexShrink: 0, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer',
-                color: 'rgba(255,255,255,0.7)', background: '#1C2333',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.25)'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#1AABDB'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'scale(1.1)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#1C2333'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.transform = 'scale(1)' }}
-            >
-              {collapsed
-                ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-              }
-            </button>
-          </div>
-
-          {/* Nav items */}
-          <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
-            {allNavItems.map(item => {
-              const active = location.pathname === item.path
-              return (
-                <button key={item.path} onClick={() => navigate(item.path)}
-                  title={collapsed ? item.name : ''}
-                  style={{
-                    width: collapsed ? '44px' : '100%',
-                    height: collapsed ? '44px' : 'auto',
-                    display: 'flex', alignItems: 'center', gap: '12px',
-                    padding: collapsed ? '0' : '10px 12px',
-                    borderRadius: '12px',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    transition: 'all 0.2s',
-                    border: 'none',
-                    cursor: 'pointer',
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                    background: active ? '#1AABDB' : 'transparent',
-                    color: active ? '#fff' : 'rgba(148,163,184,1)',
-                    margin: collapsed ? '0 auto' : '0',
-                  }}
-                  onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff' } }}
-                  onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(148,163,184,1)' } }}
-                >
-                  {item.icon(active)}
-                  {!collapsed && item.name}
+            {/* Sidebar header */}
+            <div style={{
+              padding: '20px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              minHeight: '72px', position: 'relative'
+            }}>
+              {!collapsed ? (
+                <button onClick={() => navigate('/employee/dashboard')}
+                  style={{ minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginRight: 'auto' }}>
+                  <img src="/hps_new_logo_white.png" alt="HPS" style={{ height: '48px', objectFit: 'contain', cursor: 'pointer' }} />
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '4px', margin: '4px 0 0' }}>Employee Portal</p>
                 </button>
-              )
-            })}
+              ) : (
+                <button onClick={() => navigate('/employee/dashboard')}
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '10px', background: '#1AABDB',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+                    margin: '0 auto', border: 'none', cursor: 'pointer'
+                  }}>
+                  H
+                </button>
+              )}
+            </div>
+
+            {/* Nav items */}
+            <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
+              {allNavItems.map(item => {
+                const active = location.pathname === item.path
+                return (
+                  <button key={item.path} onClick={() => navigate(item.path)}
+                    title={collapsed ? item.name : ''}
+                    style={{
+                      width: collapsed ? '44px' : '100%',
+                      height: collapsed ? '44px' : 'auto',
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: collapsed ? '0' : '10px 12px',
+                      borderRadius: '12px',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      transition: 'all 0.2s',
+                      border: 'none',
+                      cursor: 'pointer',
+                      justifyContent: collapsed ? 'center' : 'flex-start',
+                      background: active ? '#1AABDB' : 'transparent',
+                      color: active ? '#fff' : 'rgba(148,163,184,1)',
+                      margin: collapsed ? '0 auto' : '0',
+                    }}
+                    onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff' } }}
+                    onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(148,163,184,1)' } }}
+                  >
+                    {item.icon(active)}
+                    {!collapsed && item.name}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Theme toggle */}
+            <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'center' }}>
+              <ThemeToggle collapsed={collapsed} />
+            </div>
+
+            {/* Profile + Logout */}
+            <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              {!collapsed && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '12px', background: '#1AABDB',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontWeight: 700, fontSize: '0.875rem', flexShrink: 0
+                  }}>
+                    {employee.name?.charAt(0)}
+                  </div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <p style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{employee.name}</p>
+                    <p style={{ color: 'rgba(148,163,184,1)', fontSize: '0.75rem', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{employee.empId}</p>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={handleLogout}
+                title={collapsed ? 'Logout' : ''}
+                style={{
+                  width: collapsed ? '44px' : '100%',
+                  height: collapsed ? '44px' : 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: collapsed ? '0 auto' : '0',
+                  background: 'rgba(255,255,255,0.1)', color: 'rgba(203,213,225,1)',
+                  padding: collapsed ? '0' : '10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 500,
+                  border: 'none', cursor: 'pointer', transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              >
+                {collapsed ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                ) : 'Logout'}
+              </button>
+            </div>
           </div>
 
-          {/* Theme toggle */}
-          <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'center' }}>
-            <ThemeToggle collapsed={collapsed} />
-          </div>
-
-          {/* Profile + Logout */}
-          <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            {!collapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', marginBottom: '8px' }}>
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '12px', background: '#1AABDB',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontWeight: 700, fontSize: '0.875rem', flexShrink: 0
-                }}>
-                  {employee.name?.charAt(0)}
-                </div>
-                <div style={{ overflow: 'hidden' }}>
-                  <p style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{employee.name}</p>
-                  <p style={{ color: 'rgba(148,163,184,1)', fontSize: '0.75rem', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{employee.empId}</p>
-                </div>
-              </div>
-            )}
-            <button
-              onClick={handleLogout}
-              title={collapsed ? 'Logout' : ''}
-              style={{
-                width: collapsed ? '44px' : '100%',
-                height: collapsed ? '44px' : 'auto',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: collapsed ? '0 auto' : '0',
-                background: 'rgba(255,255,255,0.1)', color: 'rgba(203,213,225,1)',
-                padding: collapsed ? '0' : '10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 500,
-                border: 'none', cursor: 'pointer', transition: 'background 0.2s'
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-            >
-              {collapsed ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                  <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
-              ) : 'Logout'}
-            </button>
-          </div>
-        </div>
+          {/* Collapse toggle button outside the sidebar to prevent clipping */}
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            style={{
+              position: 'fixed',
+              left: collapsed ? '60px' : '244px', // 72px - 12px = 60px, 256px - 12px = 244px
+              top: '24px',
+              zIndex: 40,
+              width: '24px', height: '24px', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              flexShrink: 0, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer',
+              color: 'rgba(255,255,255,0.7)', background: '#1C2333',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.25)'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#1AABDB'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'scale(1.1)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#1C2333'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.transform = 'scale(1)' }}
+          >
+            {collapsed
+              ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            }
+          </button>
+        </>
       )}
 
       {/* ── Main content ── */}
