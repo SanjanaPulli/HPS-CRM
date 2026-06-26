@@ -259,19 +259,29 @@ export default function ScannerTerminal() {
               {status === STATUS_IDLE && (
                 <>
                   <div style={{
-                    width: '96px', height: '96px', borderRadius: '24px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px',
-                    background: 'rgba(26,171,219,0.08)', border: '2px dashed rgba(26,171,219,0.3)'
+                    width: '80px', height: '80px', borderRadius: '24px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px',
+                    background: 'rgba(26,171,219,0.06)', border: '1px solid rgba(26,171,219,0.15)',
+                    boxShadow: '0 8px 32px rgba(26,171,219,0.05)'
                   }}>
-                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="6" width="1.5" height="12"/><rect x="5" y="6" width="1" height="12"/>
-                      <rect x="8" y="6" width="2" height="12"/><rect x="12" y="6" width="1" height="12"/>
-                      <rect x="15" y="6" width="2.5" height="12"/><rect x="19.5" y="6" width="1" height="12"/>
-                      <rect x="21.5" y="6" width="0.5" height="12"/>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 12V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6" />
+                      <path d="M12 4v16" />
+                      <path d="M8 8h8" />
+                      <path d="M8 12h8" />
+                      <circle cx="12" cy="16" r="1.5" fill="#1AABDB" />
                     </svg>
                   </div>
-                  <p style={{ color: '#94A3B8', fontSize: '0.875rem', textAlign: 'center', lineHeight: 1.6, margin: 0 }}>
-                    Press <span style={{ color: '#1AABDB' }}>Start Scanner</span> and hold your<br />employee barcode up to the camera
+                  <div style={{
+                    padding: '6px 14px', borderRadius: '999px',
+                    background: 'rgba(26,171,219,0.08)', border: '1px solid rgba(26,171,219,0.15)',
+                    color: '#1AABDB', fontSize: '0.75rem', fontWeight: 600,
+                    letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '8px'
+                  }}>
+                    System Active
+                  </div>
+                  <p style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 500, textAlign: 'center', margin: 0 }}>
+                    Scan barcode badge or enter code
                   </p>
                 </>
               )}
@@ -437,8 +447,11 @@ export default function ScannerTerminal() {
           </div>
         </div>
 
-        <p style={{ textAlign: 'center', color: '#334155', fontSize: '0.75rem', marginTop: '12px' }}>
-          HPS Pvt Ltd · Attendance Terminal 
+        <p style={{ textAlign: 'center', color: '#475569', fontSize: '0.75rem', marginTop: '16px', lineHeight: 1.5 }}>
+          {settings?.officeName || "HPS Pvt Ltd"} · Attendance Terminal
+          {settings?.officeAddress && (
+            <span style={{ display: 'block', color: '#334155', marginTop: '4px' }}>{settings.officeAddress}</span>
+          )}
         </p>
 
       </div>

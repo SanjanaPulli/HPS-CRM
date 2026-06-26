@@ -18,6 +18,69 @@ function EmployeeProfile() {
   const [isLg, setIsLg] = useState(window.innerWidth >= 1024)
   const barcodeRef = useRef(null)
 
+  const [documents, setDocuments] = useState([])
+  const [assets, setAssets] = useState([])
+  const [uploadType, setUploadType] = useState('Aadhaar')
+  const [uploadFile, setUploadFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadErr, setUploadErr] = useState('')
+
+  const fetchDocuments = async (empId) => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/documents/${empId}`)
+      setDocuments(res.data)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const fetchAssets = async (empId) => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/assets?empId=${empId}`)
+      setAssets(res.data)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleFileUpload = async (e) => {
+    e.preventDefault()
+    if (!uploadFile) return setUploadErr('Select a file first')
+    setUploading(true)
+    setUploadErr('')
+    const formData = new FormData()
+    formData.append('file', uploadFile)
+    formData.append('empId', employee.empId)
+    formData.append('docType', uploadType)
+    try {
+      await axios.post(`${BASE_URL}/api/documents`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setUploadFile(null)
+      // reset file input
+      const fileInput = document.getElementById('doc-file-input')
+      if (fileInput) fileInput.value = ''
+      fetchDocuments(employee.empId)
+    } catch (err) {
+      setUploadErr(err.response?.data?.error || 'Failed to upload document')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDocDelete = async (id) => {
+    if (!window.confirm('Delete this document?')) return
+    try {
+      const token = localStorage.getItem('adminToken')
+      await axios.delete(`${BASE_URL}/api/documents/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      fetchDocuments(employee.empId)
+    } catch {
+      alert('Delete failed. Only Admins can delete documents.')
+    }
+  }
+
   useEffect(() => {
     let emp = null
     const stored = localStorage.getItem('employeeAuth')
@@ -37,6 +100,8 @@ function EmployeeProfile() {
     const loadData = (targetEmp) => {
       setEmployee(targetEmp)
       fetchEmployee(targetEmp.empId)
+      fetchDocuments(targetEmp.empId)
+      fetchAssets(targetEmp.empId)
     }
 
     if (emp) {
@@ -293,7 +358,109 @@ function EmployeeProfile() {
               
             </div>
           </div>
-          
+
+          {/* My Assets */}
+          <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '20px', color: 'var(--text-primary)', margin: '0 0 20px' }}>
+              Assigned Company Assets
+            </h3>
+            {assets.length === 0 ? (
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>No company assets currently assigned to you.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {assets.map(asset => (
+                  <div key={asset.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '12px', background: 'var(--surface2)', border: '1px solid var(--card-border)' }}>
+                    <div>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{asset.name}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>SN: {asset.serialNumber}</p>
+                    </div>
+                    <span style={{
+                      alignSelf: 'center', fontSize: '0.75rem', fontWeight: 600, padding: '3px 8px', borderRadius: '9999px',
+                      background: asset.status === 'Assigned' ? 'rgba(26,171,219,0.1)' : 'rgba(16,185,129,0.1)',
+                      color: asset.status === 'Assigned' ? '#1AABDB' : '#10B981'
+                    }}>
+                      {asset.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* My Documents (Vault) */}
+          <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '20px', color: 'var(--text-primary)', margin: '0 0 20px' }}>
+              Document Vault
+            </h3>
+            
+            {/* Upload form */}
+            <form onSubmit={handleFileUpload} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--card-border)' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <select
+                  value={uploadType}
+                  onChange={e => setUploadType(e.target.value)}
+                  style={{
+                    padding: '8px 12px', borderRadius: '10px', fontSize: '0.875rem', outline: 'none',
+                    background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)'
+                  }}
+                >
+                  <option value="Aadhaar">Aadhaar Card</option>
+                  <option value="PAN">PAN Card</option>
+                  <option value="Degree">Degree Certificate</option>
+                  <option value="Contract">Employment Contract</option>
+                  <option value="Resume">Resume / CV</option>
+                </select>
+                <input
+                  id="doc-file-input"
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={e => setUploadFile(e.target.files[0])}
+                  style={{
+                    flex: 1, padding: '6px', borderRadius: '10px', fontSize: '0.875rem',
+                    background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)'
+                  }}
+                />
+              </div>
+              {uploadErr && <p style={{ fontSize: '0.75rem', color: '#EF4444', margin: 0 }}>{uploadErr}</p>}
+              <button
+                type="submit"
+                disabled={uploading}
+                style={{
+                  padding: '10px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, color: '#fff',
+                  border: 'none', cursor: uploading ? 'not-allowed' : 'pointer', background: uploading ? 'rgba(26,171,219,0.5)' : '#1AABDB'
+                }}
+              >
+                {uploading ? 'Uploading...' : 'Upload Document'}
+              </button>
+            </form>
+
+            {/* Documents List */}
+            {documents.length === 0 ? (
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>No documents uploaded yet.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '8px' }}>
+                {documents.map(doc => (
+                  <div key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '12px', background: 'var(--surface2)', border: '1px solid var(--card-border)' }}>
+                    <div>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{doc.docType}</p>
+                      <a href={`${BASE_URL}${doc.fileUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: '#1AABDB', textDecoration: 'none' }}>
+                        View: {doc.fileName.length > 20 ? doc.fileName.substring(0, 17) + '...' : doc.fileName}
+                      </a>
+                    </div>
+                    <button
+                      onClick={() => handleDocDelete(doc.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: '4px' }}
+                      title="Delete document"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Daily work status */}
           {employee.dailyWorkStatus && (

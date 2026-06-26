@@ -5,7 +5,8 @@ import BASE_URL from '../config'
 
 const EMPTY_FORM = {
   empId: '', name: '', position: '', joiningDate: '', endDate: '', email: '',
-  contact: '', salary: 'Not Disclosed', teamLead: '', department: '', photo: ''
+  contact: '', salary: 'Not Disclosed', teamLead: '', department: '', photo: '',
+  shiftId: '', leaveBalanceCL: '12.0', leaveBalanceSL: '10.0'
 }
 
 const DEPARTMENTS = ['Engineering', 'HR', 'Sales', 'Marketing', 'Finance', 'IT', 'Operations', 'Other']
@@ -45,6 +46,97 @@ function Employees() {
   const [isMobile, setIsMobile]         = useState(window.innerWidth < 768)
   const barcodeRefs = useRef({})
   const formRef     = useRef(null)
+
+  const [expandedAssets, setExpandedAssets] = useState([])
+  const [expandedDocs, setExpandedDocs] = useState([])
+  const [shifts, setShifts]                 = useState([])
+  
+  const [newAssetName, setNewAssetName] = useState('')
+  const [newAssetSerial, setNewAssetSerial] = useState('')
+  const [assigningAsset, setAssigningAsset] = useState(false)
+  const [assignErr, setAssignErr] = useState('')
+
+  useEffect(() => {
+    axios.get(`${BASE_URL}/api/shifts`)
+      .then(res => setShifts(res.data))
+      .catch(e => console.error('Failed to fetch shifts', e))
+  }, [])
+
+  useEffect(() => {
+    if (!expandedId) {
+      setExpandedAssets([])
+      setExpandedDocs([])
+      return
+    }
+    fetchExpandedDetails(expandedId)
+  }, [expandedId])
+
+  const fetchExpandedDetails = async (empId) => {
+    try {
+      const [assetsRes, docsRes] = await Promise.all([
+        axios.get(`${BASE_URL}/api/assets?empId=${empId}`),
+        axios.get(`${BASE_URL}/api/documents/${empId}`)
+      ])
+      setExpandedAssets(assetsRes.data)
+      setExpandedDocs(docsRes.data)
+    } catch (e) {
+      console.error('Failed to load assets/docs', e)
+    }
+  }
+
+  const handleAssignAsset = async (e, empId) => {
+    e.preventDefault()
+    if (!newAssetName.trim() || !newAssetSerial.trim()) return setAssignErr('All fields are required')
+    setAssigningAsset(true)
+    setAssignErr('')
+    try {
+      await axios.post(`${BASE_URL}/api/assets`, {
+        empId,
+        name: newAssetName,
+        serialNumber: newAssetSerial
+      })
+      setNewAssetName('')
+      setNewAssetSerial('')
+      fetchExpandedDetails(empId)
+    } catch (err) {
+      setAssignErr(err.response?.data?.error || 'Failed to assign asset')
+    } finally {
+      setAssigningAsset(false)
+    }
+  }
+
+  const handleReturnAsset = async (id, empId) => {
+    if (!window.confirm('Mark this asset as returned?')) return
+    try {
+      await axios.put(`${BASE_URL}/api/assets/${id}/return`)
+      fetchExpandedDetails(empId)
+    } catch (err) {
+      alert('Failed to return asset')
+    }
+  }
+
+  const handleDeleteAsset = async (id, empId) => {
+    if (!window.confirm('Delete this asset from inventory?')) return
+    try {
+      await axios.delete(`${BASE_URL}/api/assets/${id}`)
+      fetchExpandedDetails(empId)
+    } catch (err) {
+      alert('Failed to delete asset')
+    }
+  }
+
+  const handleAdminDocDelete = async (id, empId) => {
+    if (!window.confirm('Delete this document?')) return
+    try {
+      const token = localStorage.getItem('adminToken')
+      await axios.delete(`${BASE_URL}/api/documents/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      fetchExpandedDetails(empId)
+    } catch (err) {
+      alert('Failed to delete document')
+    }
+  }
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
@@ -114,7 +206,10 @@ function Employees() {
       email: emp.email || '', salary: emp.salary || 'Not Disclosed',
       teamLead: emp.teamLead || '', contact: emp.contact || '',
       department: isKnownDept ? (emp.department || '') : (emp.department ? 'Other' : ''),
-      photo: emp.photo || ''
+      photo: emp.photo || '',
+      shiftId: emp.shiftId || '',
+      leaveBalanceCL: emp.leaveBalanceCL !== undefined ? String(emp.leaveBalanceCL) : '12.0',
+      leaveBalanceSL: emp.leaveBalanceSL !== undefined ? String(emp.leaveBalanceSL) : '10.0'
     })
     setCustomDept(isKnownDept ? '' : (emp.department || ''))
     setShowForm(true)
@@ -357,6 +452,40 @@ function Employees() {
               )}
             </div>
 
+            {/* Office Shift Selection */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Office Shift</label>
+              <div style={selectWrap}>
+                <select value={form.shiftId}
+                  onChange={e => setForm({ ...form, shiftId: e.target.value })}
+                  style={{ ...inputStyle, width: '100%', paddingRight: 32, appearance: 'none', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
+                  <option value="">— Flexible (None) —</option>
+                  {shifts.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.startTime} - {s.endTime})</option>
+                  ))}
+                </select>
+                <span style={chevronOverlay}><ChevronDown /></span>
+              </div>
+            </div>
+
+            {/* Casual Leave Balance */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Casual Leave (CL) Balance</label>
+              <input type="number" step="0.5" value={form.leaveBalanceCL}
+                onChange={e => setForm({ ...form, leaveBalanceCL: e.target.value })}
+                placeholder="12.0"
+                style={{ ...inputStyle, width: '100%' }} />
+            </div>
+
+            {/* Sick Leave Balance */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Sick Leave (SL) Balance</label>
+              <input type="number" step="0.5" value={form.leaveBalanceSL}
+                onChange={e => setForm({ ...form, leaveBalanceSL: e.target.value })}
+                placeholder="10.0"
+                style={{ ...inputStyle, width: '100%' }} />
+            </div>
+
             {/* Submit row */}
             <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: 12, paddingTop: 8 }}>
               <button type="submit"
@@ -540,6 +669,154 @@ function Employees() {
                         <p style={{ fontSize: 14, fontStyle: 'italic', color: 'var(--text-secondary)', margin: 0 }}>"{emp.dailyWorkStatus}"</p>
                       </div>
                     )}
+
+                    {/* Shift & Leave Info */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : '1.5fr 1fr 1fr',
+                      gap: 16, marginBottom: 16,
+                    }}>
+                      <div style={{
+                        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                        padding: '12px 16px', borderRadius: 16
+                      }}>
+                        <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Assigned Shift</p>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                          {shifts.find(s => s.id === emp.shiftId)?.name || 'Flexible (No Shift)'}
+                          {emp.shiftId && (
+                            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', display: 'block', marginTop: 2 }}>
+                              ({shifts.find(s => s.id === emp.shiftId)?.startTime} - {shifts.find(s => s.id === emp.shiftId)?.endTime})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div style={{
+                        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                        padding: '12px 16px', borderRadius: 16
+                      }}>
+                        <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Casual Leaves (CL)</p>
+                        <p style={{ fontSize: 16, fontWeight: 700, color: '#1AABDB', margin: 0 }}>{emp.leaveBalanceCL ?? '12.0'}</p>
+                      </div>
+                      <div style={{
+                        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                        padding: '12px 16px', borderRadius: 16
+                      }}>
+                        <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Sick Leaves (SL)</p>
+                        <p style={{ fontSize: 16, fontWeight: 700, color: '#eab308', margin: 0 }}>{emp.leaveBalanceSL ?? '10.0'}</p>
+                      </div>
+                    </div>
+
+                    {/* Assets & Documents Split Section */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                      gap: 20, marginBottom: 20
+                    }}>
+                      {/* Assets Vault */}
+                      <div style={{
+                        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                        padding: 16, borderRadius: 20
+                      }}>
+                        <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 12px 0' }}>Assigned Company Assets</h4>
+                        {expandedAssets.length === 0 ? (
+                          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px 0' }}>No assets assigned to this employee</p>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                            {expandedAssets.map(asset => (
+                              <div key={asset.id} style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                background: 'var(--surface2)', padding: '8px 12px', borderRadius: 12,
+                                border: '1px solid var(--card-border)'
+                              }}>
+                                <div>
+                                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{asset.name}</p>
+                                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>S/N: {asset.serialNumber}</p>
+                                </div>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  {asset.status === 'ASSIGNED' ? (
+                                    <button onClick={() => handleReturnAsset(asset.id, emp.empId)}
+                                      style={{
+                                        fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 8,
+                                        border: 'none', background: 'rgba(34,197,94,0.1)', color: '#22c55e', cursor: 'pointer'
+                                      }}>
+                                      Return
+                                    </button>
+                                  ) : (
+                                    <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', color: 'var(--text-muted)' }}>Returned</span>
+                                  )}
+                                  <button onClick={() => handleDeleteAsset(asset.id, emp.empId)}
+                                    style={{
+                                      fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 8,
+                                      border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer'
+                                    }}>
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <form onSubmit={(e) => handleAssignAsset(e, emp.empId)} style={{
+                          borderTop: '1px solid var(--card-border)', paddingTop: 12,
+                          display: 'flex', flexDirection: 'column', gap: 8
+                        }}>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>Assign New Asset</p>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <input type="text" placeholder="Asset Name" value={newAssetName} onChange={e => setNewAssetName(e.target.value)}
+                              style={{ ...inputStyle, flex: 1, padding: '6px 10px', fontSize: 12, borderRadius: 10 }} />
+                            <input type="text" placeholder="Serial Number" value={newAssetSerial} onChange={e => setNewAssetSerial(e.target.value)}
+                              style={{ ...inputStyle, flex: 1, padding: '6px 10px', fontSize: 12, borderRadius: 10 }} />
+                          </div>
+                          {assignErr && <p style={{ fontSize: 11, color: '#dc2626', margin: 0 }}>{assignErr}</p>}
+                          <button type="submit" disabled={assigningAsset}
+                            style={{
+                              alignSelf: 'flex-start', background: '#1AABDB', color: '#fff', fontSize: 12, fontWeight: 600,
+                              padding: '6px 14px', borderRadius: 10, border: 'none', cursor: 'pointer'
+                            }}>
+                            {assigningAsset ? 'Assigning...' : 'Assign Asset'}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Documents Vault */}
+                      <div style={{
+                        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                        padding: 16, borderRadius: 20
+                      }}>
+                        <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 12px 0' }}>Uploaded Document Vault</h4>
+                        {expandedDocs.length === 0 ? (
+                          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>No documents uploaded yet</p>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {expandedDocs.map(doc => (
+                              <div key={doc.id} style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                background: 'var(--surface2)', padding: '8px 12px', borderRadius: 12,
+                                border: '1px solid var(--card-border)'
+                              }}>
+                                <div>
+                                  <a href={`${BASE_URL}/${doc.filePath}`} target="_blank" rel="noreferrer"
+                                    style={{ fontSize: 13, fontWeight: 600, color: '#1AABDB', textDecoration: 'none' }}>
+                                    📄 {doc.documentType}
+                                  </a>
+                                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+                                    {new Date(doc.uploadedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                  </p>
+                                </div>
+                                <button onClick={() => handleAdminDocDelete(doc.id, emp.empId)}
+                                  style={{
+                                    fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 8,
+                                    border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer'
+                                  }}>
+                                  Delete
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     {/* Barcode */}
                     {emp.barcodeId && (

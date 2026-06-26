@@ -11,9 +11,14 @@ export default function ScanPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
+    fetch(`${BASE_URL}/api/settings`)
+      .then(res => res.json())
+      .then(data => setSettings(data))
+      .catch(err => console.error("Failed to load settings", err));
     return () => clearInterval(timer);
   }, []);
 
@@ -384,7 +389,7 @@ export default function ScanPage() {
             <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
             </svg>
-            Internal Management Portal
+            Corporate Workspace
           </div>
 
           {/* Heading */}
@@ -392,8 +397,8 @@ export default function ScanPage() {
             Welcome to <span>HPS Portal</span>
           </h1>
           <p className="scan-subtext">
-            Harsha Perfect Solutions — CRM &amp; Attendance Management System.<br />
-            Select your role and sign in to continue.
+            Harsha Perfect Solutions Management Portal.<br />
+            Sign in with your credentials to access your dashboard.
           </p>
 
           <div className="scan-card-wrap">
@@ -522,8 +527,11 @@ export default function ScanPage() {
         </main>
 
         {/* Footer */}
-        <footer className="scan-footer">
-          © {new Date().getFullYear()} Harsha Perfect Solutions Pvt. Ltd. · Internal Use Only
+        <footer className="scan-footer" style={{ padding: "1.5rem 1rem", lineHeight: 1.5 }}>
+          <p>© {new Date().getFullYear()} {settings?.officeName || "Harsha Perfect Solutions Pvt. Ltd."} · Internal Use Only</p>
+          {settings?.officeAddress && (
+            <p style={{ fontSize: 10, color: "#94A3B8", marginTop: 4 }}>{settings.officeAddress}</p>
+          )}
         </footer>
       </div>
     </>

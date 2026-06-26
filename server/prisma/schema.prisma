@@ -23,8 +23,14 @@ model Employee {
   password           String          @default("hps@1234")
   createdAt          DateTime        @default(now())
   isAttendanceLeader Boolean         @default(false)
+  leaveBalanceCL     Float           @default(12.0)
+  leaveBalanceSL     Float           @default(10.0)
+  shiftId            Int?
+  shift              Shift?          @relation(fields: [shiftId], references: [id], onDelete: SetNull)
   attendance         Attendance[]
   leaveRequest       LeaveRequest[]
+  assets             Asset[]
+  documents          Document[]
 }
 
 model Attendance {
@@ -124,4 +130,34 @@ model Holiday {
   name      String
   type      String   @default("National") // National | Optional | Company
   createdAt DateTime @default(now())
+}
+
+model Shift {
+  id          Int        @id @default(autoincrement())
+  name        String
+  startTime   String     @default("09:30")
+  endTime     String     @default("17:30")
+  createdAt   DateTime   @default(now())
+  employees   Employee[]
+}
+
+model Asset {
+  id           Int       @id @default(autoincrement())
+  empId        String
+  name         String
+  serialNumber String    @unique
+  status       String    @default("Assigned") // Assigned | Returned
+  assignedAt   DateTime  @default(now())
+  returnedAt   DateTime?
+  employee     Employee  @relation(fields: [empId], references: [empId], onDelete: Cascade)
+}
+
+model Document {
+  id         Int      @id @default(autoincrement())
+  empId      String
+  fileName   String
+  fileUrl    String
+  docType    String
+  uploadedAt DateTime @default(now())
+  employee   Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
 }

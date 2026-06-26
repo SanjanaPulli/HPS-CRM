@@ -30,7 +30,8 @@ const createEmployee = async (req, res) => {
       empId, name, position, department, email,
       contact, joiningDate, salary,
       teamLead, dailyWorkStatus,
-      photo, password
+      photo, password, shiftId,
+      leaveBalanceCL, leaveBalanceSL
     } = req.body
 
     const barcodeId = generateBarcodeId(empId)
@@ -40,7 +41,10 @@ const createEmployee = async (req, res) => {
         contact, joiningDate, salary,
         teamLead, dailyWorkStatus,
         photo, barcodeId,
-        password: password || 'hps@1234'
+        password: password || 'hps@1234',
+        shiftId: shiftId ? parseInt(shiftId) : null,
+        leaveBalanceCL: leaveBalanceCL !== undefined ? parseFloat(leaveBalanceCL) : 12.0,
+        leaveBalanceSL: leaveBalanceSL !== undefined ? parseFloat(leaveBalanceSL) : 10.0
       }
     })
     await logActivity({
@@ -62,7 +66,8 @@ const updateEmployee = async (req, res) => {
     const {
       name, position, department, email,
       contact, joiningDate, salary,
-      teamLead, dailyWorkStatus, photo
+      teamLead, dailyWorkStatus, photo,
+      shiftId, leaveBalanceCL, leaveBalanceSL
     } = req.body
 
     const employee = await prisma.employee.update({
@@ -70,7 +75,10 @@ const updateEmployee = async (req, res) => {
       data: {
         name, position, department, email,
         contact, joiningDate, salary,
-        teamLead, dailyWorkStatus, photo
+        teamLead, dailyWorkStatus, photo,
+        shiftId: shiftId !== undefined ? (shiftId ? parseInt(shiftId) : null) : undefined,
+        leaveBalanceCL: leaveBalanceCL !== undefined ? parseFloat(leaveBalanceCL) : undefined,
+        leaveBalanceSL: leaveBalanceSL !== undefined ? parseFloat(leaveBalanceSL) : undefined
       }
     })
     await logActivity({

@@ -438,20 +438,7 @@ function EmployeeLayout() {
               )
             })}
 
-            <button
-              onClick={() => { navigate('/employee/profile'); setShowMore(false) }}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '14px 0', borderBottom: '1px solid var(--card-border)',
-                fontSize: '0.875rem', fontWeight: 500, background: 'none', border: 'none',
-                borderBottom: '1px solid var(--card-border)',
-                cursor: 'pointer', color: 'var(--text-primary)'
-              }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-              My Profile
-            </button>
+
 
             <button
               onClick={() => { toggleTheme(); setShowMore(false) }}
