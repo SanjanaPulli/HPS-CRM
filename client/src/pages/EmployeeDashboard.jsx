@@ -53,10 +53,10 @@ function EmployeeDashboard() {
       ])
       const records = attRes.data
       setAttendanceStats({
-        present:  records.filter(r => r.status === 'Present').length,
+        present:  records.filter(r => ['Present', 'WFH', 'On Duty', 'Permission'].includes(r.status)).length,
         late:     records.filter(r => r.status === 'Late').length,
         absent:   records.filter(r => r.status === 'Absent').length,
-        onLeave:  records.filter(r => r.status === 'On Leave').length,
+        onLeave:  records.filter(r => ['Leave', 'On Leave', 'Half Day'].includes(r.status)).length,
       })
       setPendingLeave(leaveRes.data.filter(l => l.status === 'Pending').length)
     } catch (err) {

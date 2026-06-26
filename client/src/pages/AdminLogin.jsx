@@ -21,13 +21,24 @@ export default function AdminLogin() {
       });
       const data = await res.json();
       if (res.ok) {
-        // Derive role from the name returned by backend ("Admin" or "Manager")
-        const role = data.name === "Manager" ? "manager" : "admin";
+        const role = data.role || (data.name === "Manager" ? "manager" : "admin");
 
         localStorage.setItem("adminAuth", "true");
-        localStorage.setItem("adminName", data.name);  // "Admin" or "Manager"
-        localStorage.setItem("role", role);             // "admin" or "manager"
-        localStorage.setItem("adminToken", data.token); // Save JWT token
+        localStorage.setItem("adminName", data.name);
+        localStorage.setItem("role", role);
+        localStorage.setItem("adminToken", data.token);
+
+        if (data.empId) {
+          try {
+            const empRes = await fetch(`${BASE_URL}/api/employees/${data.empId}`);
+            if (empRes.ok) {
+              const empData = await empRes.json();
+              localStorage.setItem("employeeAuth", JSON.stringify(empData));
+            }
+          } catch (e) {
+            console.error("Failed to pre-fetch employee details", e);
+          }
+        }
 
         navigate("/admin/dashboard");
       } else {

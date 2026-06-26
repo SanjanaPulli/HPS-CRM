@@ -119,13 +119,19 @@ export default function Reports() {
 
   const employeeStats = employees.map(emp => {
     const records = filtered.filter(r => r.empId === emp.empId)
-    const present = records.filter(r => r.status === 'Present').length
-    const late    = records.filter(r => r.status === 'Late').length
-    const absent  = records.filter(r => r.status === 'Absent').length
-    const onLeave = records.filter(r => r.status === 'On Leave').length
-    const total   = present + late + absent + onLeave
-    const rate    = total > 0 ? Math.round(((present + late) / total) * 100) : 0
-    return { ...emp, present, late, absent, onLeave, total, rate }
+    const present    = records.filter(r => r.status === 'Present').length
+    const late       = records.filter(r => r.status === 'Late').length
+    const absent     = records.filter(r => r.status === 'Absent').length
+    const leave      = records.filter(r => r.status === 'Leave' || r.status === 'On Leave').length
+    const wfh        = records.filter(r => r.status === 'WFH').length
+    const onDuty     = records.filter(r => r.status === 'On Duty').length
+    const permission = records.filter(r => r.status === 'Permission').length
+    const halfDay    = records.filter(r => r.status === 'Half Day').length
+
+    const total = present + late + absent + leave + wfh + onDuty + permission + halfDay
+    const workedDays = present + late + wfh + onDuty + permission + (halfDay * 0.5)
+    const rate = total > 0 ? Math.round((workedDays / total) * 100) : 0
+    return { ...emp, present, late, absent, leave, wfh, onDuty, permission, halfDay, total, rate }
   })
 
   const sorted = [...employeeStats].sort((a, b) => {
@@ -137,19 +143,24 @@ export default function Reports() {
   })
 
   const totals = {
-    present: filtered.filter(r => r.status === 'Present').length,
-    late:    filtered.filter(r => r.status === 'Late').length,
-    absent:  filtered.filter(r => r.status === 'Absent').length,
-    onLeave: filtered.filter(r => r.status === 'On Leave').length,
+    present:    filtered.filter(r => r.status === 'Present').length,
+    late:       filtered.filter(r => r.status === 'Late').length,
+    absent:     filtered.filter(r => r.status === 'Absent').length,
+    leave:      filtered.filter(r => r.status === 'Leave' || r.status === 'On Leave').length,
+    wfh:        filtered.filter(r => r.status === 'WFH').length,
+    onDuty:     filtered.filter(r => r.status === 'On Duty').length,
+    permission: filtered.filter(r => r.status === 'Permission').length,
+    halfDay:    filtered.filter(r => r.status === 'Half Day').length,
   }
-  const totalScans  = totals.present + totals.late + totals.absent + totals.onLeave
-  const overallRate = totalScans > 0 ? Math.round(((totals.present + totals.late) / totalScans) * 100) : 0
+  const totalScans  = totals.present + totals.late + totals.absent + totals.leave + totals.wfh + totals.onDuty + totals.permission + totals.halfDay
+  const workedScans = totals.present + totals.late + totals.wfh + totals.onDuty + totals.permission + (totals.halfDay * 0.5)
+  const overallRate = totalScans > 0 ? Math.round((workedScans / totalScans) * 100) : 0
 
   const exportCSV = () => {
-    const headers = ['Name','EmpID','Position','Department','Present','Late','Absent','On Leave','Total','Attendance %']
+    const headers = ['Name','EmpID','Position','Department','Present','Late','Absent','Leave','WFH','On Duty','Permission','Half Day','Total','Attendance %']
     const rows = sorted.map(e => [
       e.name, e.empId, e.position || '—', e.department || '—',
-      e.present, e.late, e.absent, e.onLeave, e.total, `${e.rate}%`
+      e.present, e.late, e.absent, e.leave, e.wfh, e.onDuty, e.permission, e.halfDay, e.total, `${e.rate}%`
     ])
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -287,13 +298,17 @@ export default function Reports() {
         <p style={{ margin: 0, fontSize: 28, fontWeight: 800, color: '#1AABDB' }}>{overallRate}%</p>
         <p style={{ margin: '3px 0 0', fontSize: 11, fontWeight: 600, color: '#1AABDB', opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overall Attendance Rate</p>
       </div>
-      {/* 4 stats — 2×2 on mobile, 4-col on wider */}
+      {/* 8 stats — 2×2 on mobile, 4-col on wider */}
       <div className="report-stat-grid">
         {[
-          { label: 'Present',  value: totals.present,  color: '#10B981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.18)'  },
-          { label: 'Late',     value: totals.late,     color: '#F59E0B', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.18)'  },
-          { label: 'Absent',   value: totals.absent,   color: '#EF4444', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.18)'   },
-          { label: 'On Leave', value: totals.onLeave,  color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)',  border: 'rgba(139,92,246,0.18)'  },
+          { label: 'Present',    value: totals.present,    color: '#10B981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.18)'  },
+          { label: 'Late',       value: totals.late,       color: '#F59E0B', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.18)'  },
+          { label: 'Absent',     value: totals.absent,     color: '#EF4444', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.18)'   },
+          { label: 'Leave',      value: totals.leave,      color: '#475569', bg: 'rgba(100,116,139,0.08)', border: 'rgba(100,116,139,0.18)' },
+          { label: 'WFH',        value: totals.wfh,        color: '#1AABDB', bg: 'rgba(26,171,219,0.08)',  border: 'rgba(26,171,219,0.18)'  },
+          { label: 'On Duty',    value: totals.onDuty,     color: '#7C3AED', bg: 'rgba(139,92,246,0.08)',  border: 'rgba(139,92,246,0.18)'  },
+          { label: 'Permission', value: totals.permission, color: '#D97706', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.18)'  },
+          { label: 'Half Day',   value: totals.halfDay,    color: '#9333EA', bg: 'rgba(147,51,234,0.08)',  border: 'rgba(147,51,234,0.18)'  },
         ].map(s => (
           <div key={s.label} style={{ borderRadius: 14, padding: '14px 16px', background: s.bg, border: `1px solid ${s.border}` }}>
             <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</p>
@@ -349,10 +364,14 @@ export default function Reports() {
                 </div>
                 <RateBar rate={emp.rate} />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginTop: 10 }}>
-                  <StatCell label="Present" value={emp.present} color="#10B981" />
-                  <StatCell label="Late"    value={emp.late}    color="#F59E0B" />
-                  <StatCell label="Absent"  value={emp.absent}  color="#EF4444" />
-                  <StatCell label="Leave"   value={emp.onLeave} color="#8B5CF6" />
+                  <StatCell label="Pres"    value={emp.present}    color="#10B981" />
+                  <StatCell label="Late"    value={emp.late}       color="#F59E0B" />
+                  <StatCell label="Abs"     value={emp.absent}     color="#EF4444" />
+                  <StatCell label="Leave"   value={emp.leave}      color="#475569" />
+                  <StatCell label="WFH"     value={emp.wfh}        color="#1AABDB" />
+                  <StatCell label="OD"      value={emp.onDuty}     color="#7C3AED" />
+                  <StatCell label="Perm"    value={emp.permission} color="#D97706" />
+                  <StatCell label="Half"    value={emp.halfDay}    color="#9333EA" />
                 </div>
               </div>
             ))}
@@ -363,12 +382,12 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* ── Desktop table ── */}
+           {/* ── Desktop table ── */}
           <div className="report-table" style={{ borderRadius: 14, overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--card-border)', overflowX: 'auto', width: '100%' }}>
-            <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'var(--surface2)' }}>
-                  {['Employee','Department','Present','Late','Absent','On Leave','Rate'].map(h => (
+                  {['Employee','Department','Present','Late','Absent','Leave','WFH','On Duty','Perm','Half Day','Rate'].map(h => (
                     <th key={h} style={{ textAlign: 'left', fontSize: 11, fontWeight: 700, padding: '14px 18px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                   ))}
                 </tr>
@@ -378,7 +397,7 @@ export default function Reports() {
                   const rc = getRateColor(emp.rate)
                   return (
                     <tr
-                      key={emp.empId}
+                       key={emp.empId}
                       style={{ borderBottom: '1px solid var(--card-border)', transition: 'background 0.12s' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
                       onMouseLeave={e => e.currentTarget.style.background = ''}
@@ -396,7 +415,11 @@ export default function Reports() {
                       <td style={{ padding: '14px 18px' }}><span style={{ fontSize: 13, fontWeight: 700, color: '#10B981' }}>{emp.present}</span></td>
                       <td style={{ padding: '14px 18px' }}><span style={{ fontSize: 13, fontWeight: 700, color: '#F59E0B' }}>{emp.late}</span></td>
                       <td style={{ padding: '14px 18px' }}><span style={{ fontSize: 13, fontWeight: 700, color: '#EF4444' }}>{emp.absent}</span></td>
-                      <td style={{ padding: '14px 18px' }}><span style={{ fontSize: 13, fontWeight: 700, color: '#8B5CF6' }}>{emp.onLeave}</span></td>
+                      <td style={{ padding: '14px 18px' }}><span style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>{emp.leave}</span></td>
+                      <td style={{ padding: '14px 18px' }}><span style={{ fontSize: 13, fontWeight: 700, color: '#1AABDB' }}>{emp.wfh}</span></td>
+                      <td style={{ padding: '14px 18px' }}><span style={{ fontSize: 13, fontWeight: 700, color: '#7C3AED' }}>{emp.onDuty}</span></td>
+                      <td style={{ padding: '14px 18px' }}><span style={{ fontSize: 13, fontWeight: 700, color: '#D97706' }}>{emp.permission}</span></td>
+                      <td style={{ padding: '14px 18px' }}><span style={{ fontSize: 13, fontWeight: 700, color: '#9333EA' }}>{emp.halfDay}</span></td>
                       <td style={{ padding: '14px 18px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 70, height: 5, borderRadius: 9999, overflow: 'hidden', background: 'var(--surface2)' }}>

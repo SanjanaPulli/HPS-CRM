@@ -69,6 +69,10 @@ function App() {
           <Route path="activity" element={<Activity />} />
           <Route path="settings" element={<Settings />} />
           <Route path="calendar" element={<AdminCalendar />} />
+          <Route path="my-leave" element={<EmployeeLeave />} />
+          <Route path="my-profile" element={<EmployeeProfile />} />
+          <Route path="my-attendance" element={<EmployeeAttendance />} />
+          <Route path="my-calendar" element={<EmployeeCalendar />} />
         </Route>
 
         {/* 🔐 EMPLOYEE ROUTES (PROTECTED) */}

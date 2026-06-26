@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const path = require('path')
@@ -7,7 +8,6 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const prisma = require('./prismaClient')
 const { JWT_SECRET } = require('./utils/auth')
-require('dotenv').config()
 
 const asyncLocalStorage = new AsyncLocalStorage()
 global.asyncLocalStorage = asyncLocalStorage
@@ -64,7 +64,7 @@ app.post('/api/admin/login', async (req, res) => {
 
     if (user && await bcrypt.compare(password, user.password)) {
       const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role, name: user.name },
+        { id: user.id, username: user.username, role: user.role, name: user.name, empId: user.role === 'manager' ? 'HPS250025' : null },
         JWT_SECRET,
         { expiresIn: '12h' }
       )
@@ -81,6 +81,7 @@ app.post('/api/admin/login', async (req, res) => {
         message: 'Login successful',
         name: user.name,
         role: user.role,
+        empId: user.role === 'manager' ? 'HPS250025' : null,
         token
       })
     } else {

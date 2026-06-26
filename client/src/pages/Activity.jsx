@@ -374,25 +374,27 @@ export default function ActivityLog() {
           )}
         </div>
 
-        {/* Category tabs — scrollable */}
-        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
-          <div style={{ display: "flex", gap: 6, width: "max-content" }}>
+        {/* Category tabs — responsive wrap */}
+        <div style={{ width: "100%" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, width: "100%" }}>
             {CATEGORIES.map(cat => {
               const cfg      = getCfg(cat);
               const isActive = category.toUpperCase() === cat.toUpperCase();
               const count    = cat === "ALL" ? activities.length : (catCounts[cat] || 0);
               return (
                 <button key={cat} onClick={() => setCategory(cat)} style={{
-                  display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
-                  padding: "6px 12px", borderRadius: 9, fontSize: 12, fontWeight: 600,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                  flex: "1 1 auto", minWidth: "calc(25% - 6px)",
+                  padding: "6px 10px", borderRadius: 9, fontSize: 11, fontWeight: 600,
                   cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
                   background: isActive ? (cat === "ALL" ? "#1AABDB" : cfg.color) : "var(--surface2)",
                   color: isActive ? "#fff" : "var(--text-secondary)",
                   border: isActive ? "1px solid transparent" : "1px solid var(--card-border)",
+                  whiteSpace: "nowrap",
                 }}>
                   {cat !== "ALL" && getIcon(cat)}
                   {getCfg(cat).label || cat}
-                  <span style={{ opacity: 0.65, fontSize: 11 }}>{count}</span>
+                  <span style={{ opacity: 0.65, fontSize: 10 }}>{count}</span>
                 </button>
               );
             })}
@@ -482,6 +484,14 @@ export default function ActivityLog() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
 
         .activity-stats-grid {
           display: grid;

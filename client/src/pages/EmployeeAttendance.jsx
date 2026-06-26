@@ -12,11 +12,40 @@ function EmployeeAttendance() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
   useEffect(() => {
+    let emp = null
     const stored = localStorage.getItem('employeeAuth')
-    if (!stored) { navigate('/employee/login'); return }
-    const emp = JSON.parse(stored)
-    setEmployee(emp)
-    fetchAttendance(emp.empId)
+    if (stored) {
+      emp = JSON.parse(stored)
+    } else {
+      const isAdmin = localStorage.getItem('adminAuth')
+      const role = localStorage.getItem('role')
+      if (isAdmin && role === 'manager') {
+        // Allow manager to access
+      } else {
+        navigate('/employee/login')
+        return
+      }
+    }
+
+    const loadData = (targetEmp) => {
+      setEmployee(targetEmp)
+      fetchAttendance(targetEmp.empId)
+    }
+
+    if (emp) {
+      loadData(emp)
+    } else {
+      axios.get(`${BASE_URL}/api/employees/HPS250025`)
+        .then(res => {
+          localStorage.setItem('employeeAuth', JSON.stringify(res.data))
+          loadData(res.data)
+        })
+        .catch(err => {
+          console.error("Failed to load manager employee details", err)
+          setLoading(false)
+        })
+    }
+
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
@@ -34,18 +63,23 @@ function EmployeeAttendance() {
   }
 
   const statusStyle = (status) => {
-    if (status === 'Present') return { background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }
+    if (status === 'Present' || status === 'WFH' || status === 'On Duty' || status === 'Permission') return { background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }
     if (status === 'Late') return { background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }
-    if (status === 'On Leave') return { background: 'rgba(26,171,219,0.1)', color: '#1AABDB', border: '1px solid rgba(26,171,219,0.2)' }
+    if (status === 'Leave' || status === 'On Leave' || status === 'Half Day') return { background: 'rgba(26,171,219,0.1)', color: '#1AABDB', border: '1px solid rgba(26,171,219,0.2)' }
     return { background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }
   }
 
-  const filtered = filter === 'All' ? records : records.filter(r => r.status === filter)
+  const filtered = filter === 'All' ? records : records.filter(r => {
+    if (filter === 'Present') return ['Present', 'WFH', 'On Duty', 'Permission'].includes(r.status);
+    if (filter === 'On Leave') return ['Leave', 'On Leave', 'Half Day'].includes(r.status);
+    return r.status === filter;
+  })
+
   const stats = {
-    present: records.filter(r => r.status === 'Present').length,
+    present: records.filter(r => ['Present', 'WFH', 'On Duty', 'Permission'].includes(r.status)).length,
     late: records.filter(r => r.status === 'Late').length,
     absent: records.filter(r => r.status === 'Absent').length,
-    onLeave: records.filter(r => r.status === 'On Leave').length,
+    onLeave: records.filter(r => ['Leave', 'On Leave', 'Half Day'].includes(r.status)).length,
   }
   const total = records.length
   const attendancePct = total > 0 ? Math.round(((stats.present + stats.late) / total) * 100) : 0

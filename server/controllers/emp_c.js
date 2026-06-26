@@ -123,6 +123,10 @@ const loginEmployee = async (req, res) => {
     if (!employee)
       return res.status(404).json({ error: 'Employee not found' })
 
+    if (employee.position === 'Innovation Manager') {
+      return res.status(403).json({ error: 'Manager must login through the admin portal' })
+    }
+
     if (employee.password !== password)
       return res.status(401).json({ error: 'Invalid credentials' })
 

@@ -174,12 +174,40 @@ function EmployeeLeave() {
   })
 
   useEffect(() => {
+    let emp = null
     const stored = localStorage.getItem('employeeAuth')
-    if (!stored) { navigate('/employee/login'); return }
-    const emp = JSON.parse(stored)
-    setEmployee(emp)
-    fetchMyLeaves(emp.empId)
-    fetchHolidays()
+    if (stored) {
+      emp = JSON.parse(stored)
+    } else {
+      const isAdmin = localStorage.getItem('adminAuth')
+      const role = localStorage.getItem('role')
+      if (isAdmin && role === 'manager') {
+        // Allow manager to access
+      } else {
+        navigate('/employee/login')
+        return
+      }
+    }
+
+    const loadData = async (targetEmp) => {
+      setEmployee(targetEmp)
+      fetchMyLeaves(targetEmp.empId)
+      fetchHolidays()
+    }
+
+    if (emp) {
+      loadData(emp)
+    } else {
+      axios.get(`${BASE_URL}/api/employees/HPS250025`)
+        .then(res => {
+          localStorage.setItem('employeeAuth', JSON.stringify(res.data))
+          loadData(res.data)
+        })
+        .catch(err => {
+          console.error("Failed to load manager employee details", err)
+        })
+    }
+
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)

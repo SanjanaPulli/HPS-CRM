@@ -98,23 +98,11 @@ export default function Dashboard() {
         const attendance = await attRes.json();
         const leaves     = await leaveRes.json();
 
-        const today = new Date();
-        const todayTime = today.setHours(0, 0, 0, 0);
-
-        const wfhCount = Array.isArray(leaves) ? leaves.filter(l => {
-          if (l.status !== 'Approved' || l.type !== 'WFH') return false;
-          const start = new Date(l.fromDate || l.date);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(l.toDate || l.fromDate || l.date);
-          end.setHours(0, 0, 0, 0);
-          return todayTime >= start.getTime() && todayTime <= end.getTime();
-        }).length : 0;
-
         setStats({
           total:   Array.isArray(employees)  ? employees.length : 0,
           present: Array.isArray(attendance) ? attendance.filter(a => a.status === "Present" || a.status === "Late").length : 0,
           pending: Array.isArray(leaves)     ? leaves.filter(l => l.status === "Pending").length : 0,
-          wfh:     wfhCount,
+          wfh:     Array.isArray(attendance) ? attendance.filter(a => a.status === "WFH").length : 0,
         });
       } catch (err) {
         console.error("Dashboard fetch error:", err);

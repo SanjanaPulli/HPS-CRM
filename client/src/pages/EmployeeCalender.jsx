@@ -435,11 +435,24 @@ export default function EmployeeCalendar({ empId, holidays: propHolidays, myLeav
   const [viewMonth, setViewMonth] = useState(now.getMonth())
 
   useEffect(() => {
-    if (!empId) return
+    let targetEmpId = empId
+    if (!targetEmpId) {
+      const stored = localStorage.getItem('employeeAuth')
+      if (stored) {
+        targetEmpId = JSON.parse(stored).empId
+      } else {
+        const isAdmin = localStorage.getItem('adminAuth')
+        const role = localStorage.getItem('role')
+        if (isAdmin && role === 'manager') {
+          targetEmpId = 'HPS250025'
+        }
+      }
+    }
+    if (!targetEmpId) return
     Promise.all([
-      axios.get(`${BASE_URL}/api/attendance/${empId}`).catch(() => ({ data: [] })),
+      axios.get(`${BASE_URL}/api/attendance/${targetEmpId}`).catch(() => ({ data: [] })),
       axios.get(`${BASE_URL}/api/holidays`).catch(() => ({ data: [] })),
-      axios.get(`${BASE_URL}/api/leave/${empId}`).catch(() => ({ data: [] })),
+      axios.get(`${BASE_URL}/api/leave/${targetEmpId}`).catch(() => ({ data: [] })),
       axios.get(`${BASE_URL}/api/settings`).catch(() => ({ data: {} })),
     ]).then(([attRes, holRes, leaveRes, settingsRes]) => {
       setAttendance(attRes.data || [])

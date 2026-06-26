@@ -46,12 +46,13 @@ const STATUS_STYLE = {
   'Leave':      { background: 'rgba(100,116,139,0.1)', color: '#475569' },
   'Permission': { background: 'rgba(245,158,11,0.1)',  color: '#D97706' },
   'On Leave':   { background: 'rgba(100,116,139,0.1)', color: '#475569' },
+  'Half Day':   { background: 'rgba(147,51,234,0.1)',  color: '#9333EA' },
   'Absent':     { background: 'rgba(239,68,68,0.1)',   color: '#DC2626' },
 }
 const getStatusStyle = (status) => STATUS_STYLE[status] || STATUS_STYLE['Absent']
 
 // Filters shown in the UI — includes WFH and OD
-const FILTERS = ['All', 'Present', 'Late', 'WFH', 'On Duty', 'Leave', 'Absent']
+const FILTERS = ['All', 'Present', 'Late', 'WFH', 'On Duty', 'Leave', 'Permission', 'Half Day', 'Absent']
 
 function Attendance() {
   const [records,   setRecords]   = useState([])
@@ -258,19 +259,8 @@ function Attendance() {
   }, [leaves, selectedDate])
 
   // Resolve the true display status for a record:
-  // If the backend says 'On Leave', look up the leave table to get WFH / OD / Leave
+  // Backend now resolves status dynamically, we can use record.status directly
   const resolveStatus = (record) => {
-    if (record.status === 'On Leave' || record.status === 'Absent') {
-      const leave = leaveDateMap[record.empId]
-      if (leave) {
-        const type = resolveLeaveType(leave)
-        // Map internal types to display labels
-        if (type === 'On Duty') return 'On Duty'
-        if (type === 'WFH')     return 'WFH'
-        if (type === 'Permission') return 'Permission'
-        return 'Leave'
-      }
-    }
     return record.status
   }
 
@@ -325,13 +315,15 @@ function Attendance() {
 
   // Stats using resolved status
   const stats = useMemo(() => ({
-    present:  records.filter(r => resolveStatus(r) === 'Present').length,
-    late:     records.filter(r => resolveStatus(r) === 'Late').length,
-    wfh:      records.filter(r => resolveStatus(r) === 'WFH').length,
-    onDuty:   records.filter(r => resolveStatus(r) === 'On Duty').length,
-    leave:    records.filter(r => resolveStatus(r) === 'Leave').length,
-    absent:   records.filter(r => resolveStatus(r) === 'Absent').length,
-  }), [records, leaveDateMap])
+    present:    records.filter(r => resolveStatus(r) === 'Present').length,
+    late:       records.filter(r => resolveStatus(r) === 'Late').length,
+    wfh:        records.filter(r => resolveStatus(r) === 'WFH').length,
+    onDuty:     records.filter(r => resolveStatus(r) === 'On Duty').length,
+    leave:      records.filter(r => resolveStatus(r) === 'Leave').length,
+    permission: records.filter(r => resolveStatus(r) === 'Permission').length,
+    halfDay:    records.filter(r => resolveStatus(r) === 'Half Day').length,
+    absent:     records.filter(r => resolveStatus(r) === 'Absent').length,
+  }), [records])
 
   const isToday = selectedDate === todayStr()
 
@@ -604,14 +596,16 @@ function Attendance() {
     </div>
   )
 
-  // Stat cards — now includes WFH and On Duty
+  // Stat cards — now includes all 8 statuses
   const STAT_STYLES = [
-    { label: 'Present',  value: stats.present, border: 'rgba(16,185,129,0.35)',  color: '#059669' },
-    { label: 'Late',     value: stats.late,    border: 'rgba(245,158,11,0.35)',  color: '#D97706' },
-    { label: 'WFH',      value: stats.wfh,     border: 'rgba(26,171,219,0.35)',  color: '#1AABDB' },
-    { label: 'On Duty',  value: stats.onDuty,  border: 'rgba(139,92,246,0.35)', color: '#7C3AED' },
-    { label: 'Leave',    value: stats.leave,   border: 'rgba(100,116,139,0.35)', color: '#475569' },
-    { label: 'Absent',   value: stats.absent,  border: 'rgba(239,68,68,0.35)',   color: '#DC2626' },
+    { label: 'Present',    value: stats.present,    border: 'rgba(16,185,129,0.35)',  color: '#059669' },
+    { label: 'Late',       value: stats.late,       border: 'rgba(245,158,11,0.35)',  color: '#D97706' },
+    { label: 'WFH',        value: stats.wfh,        border: 'rgba(26,171,219,0.35)',  color: '#1AABDB' },
+    { label: 'On Duty',    value: stats.onDuty,     border: 'rgba(139,92,246,0.35)',  color: '#7C3AED' },
+    { label: 'Leave',      value: stats.leave,      border: 'rgba(100,116,139,0.35)', color: '#475569' },
+    { label: 'Permission', value: stats.permission, border: 'rgba(245,158,11,0.35)',  color: '#D97706' },
+    { label: 'Half Day',   value: stats.halfDay,    border: 'rgba(147,51,234,0.35)',  color: '#9333EA' },
+    { label: 'Absent',     value: stats.absent,     border: 'rgba(239,68,68,0.35)',   color: '#DC2626' },
   ]
 
   return (
@@ -796,7 +790,7 @@ function Attendance() {
                     border: '1px solid var(--input-border)', outline: 'none'
                   }}
                 >
-                  {['Present', 'Late', 'Absent', 'WFH', 'On Duty', 'Leave', 'Permission'].map(s => (
+                  {['Present', 'Late', 'Absent', 'WFH', 'On Duty', 'Leave', 'Permission', 'Half Day'].map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>

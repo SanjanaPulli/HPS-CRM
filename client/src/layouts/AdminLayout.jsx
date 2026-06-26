@@ -133,8 +133,38 @@ export default function AdminLayout() {
   const handleLogout = () => {
     localStorage.removeItem("adminAuth")
     localStorage.removeItem("adminName")
+    localStorage.removeItem("role")
+    localStorage.removeItem("adminToken")
+    localStorage.removeItem("employeeAuth")
     navigate("/")
   }
+
+  const role = localStorage.getItem("role")
+  const currentNavItems = [...navItems]
+  if (role === "manager") {
+    currentNavItems.push(
+      {
+        to: "/admin/my-leave", label: "My Leave", mobileLabel: "MyLeave",
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>
+      },
+      {
+        to: "/admin/my-profile", label: "My Profile", mobileLabel: "MyProfile",
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      },
+      {
+        to: "/admin/my-attendance", label: "My Attendance", mobileLabel: "MyAttend",
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
+      },
+      {
+        to: "/admin/my-calendar", label: "My Calendar", mobileLabel: "MyCal",
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      }
+    )
+  }
+
+  const primaryMobileKeys = ["/admin/dashboard", "/admin/employees", "/admin/attendance", "/admin/leave"]
+  const currentMobileNavItems = currentNavItems.filter(i => primaryMobileKeys.includes(i.to))
+  const currentMoreSheetItems = currentNavItems.filter(i => !primaryMobileKeys.includes(i.to))
 
   const sidebarW = collapsed ? "72px" : "240px"
 
@@ -166,8 +196,12 @@ export default function AdminLayout() {
           box-sizing: border-box;
         }
         .nav-item--collapsed {
+          width: 44px !important;
+          height: 44px !important;
+          padding: 0 !important;
           justify-content: center !important;
-          padding: 10px 0;
+          margin: 0 auto !important;
+          border-radius: 12px !important;
         }
         .nav-item:hover {
           background: rgba(26,171,219,0.12);
@@ -244,17 +278,17 @@ export default function AdminLayout() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: collapsed ? "center" : "space-between",
-                padding: "0 16px",
+                justifyContent: "center",
+                padding: collapsed ? "16px 0" : "0 16px",
                 minHeight: "72px",
                 borderBottom: "1px solid rgba(255,255,255,0.06)",
-                gap: 8,
+                position: "relative",
               }}
             >
               {!collapsed && (
                 <button
                   onClick={() => navigate("/admin/dashboard")}
-                  style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", background: "none", border: "none", cursor: "pointer", overflow: "hidden" }}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", background: "none", border: "none", cursor: "pointer", overflow: "hidden", marginRight: "auto" }}
                 >
                   <img src="/hps_new_logo_white.png" alt="HPS" style={{ height: 32, objectFit: "contain", marginBottom: 4 }} />
                   <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", whiteSpace: "nowrap" }}>
@@ -265,31 +299,40 @@ export default function AdminLayout() {
               {collapsed && (
                 <button
                   onClick={() => navigate("/admin/dashboard")}
-                  style={{ width: 32, height: 32, borderRadius: 8, background: "#1AABDB", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer" }}
+                  style={{ width: 36, height: 36, borderRadius: 10, background: "#1AABDB", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 15, border: "none", cursor: "pointer", margin: "0 auto" }}
                 >
                   H
                 </button>
               )}
               <button
-                onClick={() => setCollapsed(c => !c)}
+                onClick={() => setCollapsed(prev => !prev)}
                 style={{
-                  width: 32, height: 32, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "transparent", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.45)",
-                  flexShrink: 0, transition: "background 0.18s, color 0.18s",
+                  position: "absolute",
+                  right: "-12px",
+                  top: "24px",
+                  zIndex: 40,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 24, height: 24, borderRadius: "50%",
+                  background: "#1C2333",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "rgba(255,255,255,0.7)",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                  transition: "all 0.2s ease-in-out",
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(26,171,219,0.15)"; e.currentTarget.style.color = "#1AABDB" }}
-                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.45)" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#1AABDB"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.transform = "scale(1.1)" }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#1C2333"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.transform = "scale(1)" }}
               >
                 {collapsed
-                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                  ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                  : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 }
               </button>
             </div>
 
             {/* Nav links */}
             <nav style={{ flex: 1, padding: "16px 8px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
-              {navItems.map(item => (
+              {currentNavItems.map(item => (
                 <SideNavItem key={item.to} item={item} collapsed={collapsed} />
               ))}
             </nav>
@@ -413,7 +456,7 @@ export default function AdminLayout() {
               paddingBottom: "env(safe-area-inset-bottom)",
             }}
           >
-            {mobileNavItems.map(item => {
+            {currentMobileNavItems.map(item => {
               const active = location.pathname === item.to
               return (
                 <button
@@ -488,7 +531,7 @@ export default function AdminLayout() {
             >
               <div style={{ width: 40, height: 4, borderRadius: 999, background: "var(--card-border)", margin: "0 auto 20px" }} />
 
-              {moreSheetItems.map(item => {
+              {currentMoreSheetItems.map(item => {
                 const active = location.pathname === item.to
                 return (
                   <button

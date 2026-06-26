@@ -216,19 +216,70 @@ const markAttendance = async (req, res) => {
   }
 }
 
+const toISTDateString = (utcDate) => {
+  const istDate = new Date(utcDate.getTime() + 5.5 * 60 * 60 * 1000)
+  return `${istDate.getUTCFullYear()}-${String(istDate.getUTCMonth() + 1).padStart(2, '0')}-${String(istDate.getUTCDate()).padStart(2, '0')}`
+}
+
+const isLeaveCoveringDate = (leave, targetDateStr) => {
+  const fromStr = toISTDateString(new Date(leave.fromDate || leave.date))
+  const toStr = toISTDateString(new Date(leave.toDate || leave.fromDate || leave.date))
+  return targetDateStr >= fromStr && targetDateStr <= toStr
+}
+
+const resolveAttendanceForDate = async (date) => {
+  const start = new Date(date + 'T00:00:00+05:30')
+  const end   = new Date(date + 'T23:59:59.999+05:30')
+
+  const employees = await prisma.employee.findMany()
+  const leaves = await prisma.leaveRequest.findMany({
+    where: { status: 'Approved' }
+  })
+  const leavesOnDate = leaves.filter(l => isLeaveCoveringDate(l, date))
+
+  const records = await prisma.attendance.findMany({
+    where: { checkInTime: { gte: start, lt: end } },
+    include: { employee: true }
+  })
+
+  return employees.map(emp => {
+    const record = records.find(r => r.empId === emp.empId)
+    const leave = leavesOnDate.find(l => l.empId === emp.empId)
+
+    let status = 'Absent'
+    if (leave) {
+      if (leave.isHalfDay) {
+        status = 'Half Day'
+      } else {
+        status = leave.type || 'Leave'
+        if (status === 'On Leave') status = 'Leave'
+      }
+    } else if (record) {
+      status = record.status
+    }
+
+    return {
+      id: record ? record.id : `temp-${emp.empId}`,
+      empId: emp.empId,
+      status: status,
+      timestamp: record ? record.timestamp : null,
+      checkInTime: record ? record.checkInTime : null,
+      checkOutTime: record ? record.checkOutTime : null,
+      hoursWorked: record ? record.hoursWorked : null,
+      overtimeMinutes: record ? record.overtimeMinutes : null,
+      employee: emp
+    }
+  })
+}
+
 const getTodayAttendance = async (req, res) => {
   try {
-    const now        = new Date()
-    const todayStart = getISTDayStart(now)
-    const todayEnd   = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
-
-    const records = await prisma.attendance.findMany({
-      where:   { checkInTime: { gte: todayStart, lt: todayEnd } },
-      include: { employee: true },
-      orderBy: { checkInTime: 'desc' }
-    })
-    res.json(records)
+    const now = new Date()
+    const todayStr = toISTDateString(now)
+    const resolved = await resolveAttendanceForDate(todayStr)
+    res.json(resolved)
   } catch (error) {
+    console.error('getTodayAttendance error:', error)
     res.status(500).json({ error: 'Failed to fetch today attendance' })
   }
 }
@@ -236,20 +287,46 @@ const getTodayAttendance = async (req, res) => {
 const getAllAttendance = async (req, res) => {
   try {
     const { date } = req.query
-    let where = {}
     if (date) {
-      // Treat the date string as IST day
-      const start = new Date(date + 'T00:00:00+05:30')
-      const end   = new Date(date + 'T23:59:59.999+05:30')
-      where = { checkInTime: { gte: start, lte: end } }
+      const resolved = await resolveAttendanceForDate(date)
+      return res.json(resolved)
     }
-    const records = await prisma.attendance.findMany({
-      where,
+
+    const allRecords = await prisma.attendance.findMany({
       include: { employee: true },
       orderBy: { checkInTime: 'desc' }
     })
-    res.json(records)
+
+    const leaves = await prisma.leaveRequest.findMany({
+      where: { status: 'Approved' }
+    })
+
+    const resolvedRecords = allRecords.map(record => {
+      const recordDate = record.checkInTime || record.timestamp
+      if (!recordDate) return record
+
+      const recordDateStr = toISTDateString(recordDate)
+      const leave = leaves.find(l => l.empId === record.empId && isLeaveCoveringDate(l, recordDateStr))
+
+      let status = record.status
+      if (leave) {
+        if (leave.isHalfDay) {
+          status = 'Half Day'
+        } else {
+          status = leave.type || 'Leave'
+          if (status === 'On Leave') status = 'Leave'
+        }
+      }
+
+      return {
+        ...record,
+        status
+      }
+    })
+
+    res.json(resolvedRecords)
   } catch (error) {
+    console.error('getAllAttendance error:', error)
     res.status(500).json({ error: 'Failed to fetch attendance' })
   }
 }
@@ -260,11 +337,41 @@ const getAttendanceByEmployee = async (req, res) => {
       where:   { empId: req.params.empId },
       orderBy: { checkInTime: 'desc' }
     })
-    res.json(records)
+
+    const leaves = await prisma.leaveRequest.findMany({
+      where: { empId: req.params.empId, status: 'Approved' }
+    })
+
+    const resolved = records.map(record => {
+      const recordDate = record.checkInTime || record.timestamp
+      if (!recordDate) return record
+
+      const recordDateStr = toISTDateString(recordDate)
+      const leave = leaves.find(l => isLeaveCoveringDate(l, recordDateStr))
+
+      let status = record.status
+      if (leave) {
+        if (leave.isHalfDay) {
+          status = 'Half Day'
+        } else {
+          status = leave.type || 'Leave'
+          if (status === 'On Leave') status = 'Leave'
+        }
+      }
+
+      return {
+        ...record,
+        status
+      }
+    })
+
+    res.json(resolved)
   } catch (error) {
+    console.error('getAttendanceByEmployee error:', error)
     res.status(500).json({ error: 'Failed to fetch attendance' })
   }
 }
+
 
 const updateAttendance = async (req, res) => {
   try {

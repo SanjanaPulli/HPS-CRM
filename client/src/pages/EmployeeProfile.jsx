@@ -19,10 +19,40 @@ function EmployeeProfile() {
   const barcodeRef = useRef(null)
 
   useEffect(() => {
+    let emp = null
     const stored = localStorage.getItem('employeeAuth')
-    if (!stored) { navigate('/employee/login'); return }
-    const emp = JSON.parse(stored)
-    fetchEmployee(emp.empId)
+    if (stored) {
+      emp = JSON.parse(stored)
+    } else {
+      const isAdmin = localStorage.getItem('adminAuth')
+      const role = localStorage.getItem('role')
+      if (isAdmin && role === 'manager') {
+        // Allow manager to access
+      } else {
+        navigate('/employee/login')
+        return
+      }
+    }
+
+    const loadData = (targetEmp) => {
+      setEmployee(targetEmp)
+      fetchEmployee(targetEmp.empId)
+    }
+
+    if (emp) {
+      loadData(emp)
+    } else {
+      axios.get(`${BASE_URL}/api/employees/HPS250025`)
+        .then(res => {
+          localStorage.setItem('employeeAuth', JSON.stringify(res.data))
+          loadData(res.data)
+        })
+        .catch(err => {
+          console.error("Failed to load manager employee details", err)
+          setLoading(false)
+        })
+    }
+
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768)
       setIsLg(window.innerWidth >= 1024)
