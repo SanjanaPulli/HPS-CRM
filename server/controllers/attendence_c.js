@@ -75,9 +75,42 @@ const markAttendance = async (req, res) => {
 
       // Check office IP Wi-Fi network if allowedIps is set
       if (officeSettings.allowedIps) {
-        const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
+        const clientIp = req.headers['cf-connecting-ip'] ||
+                         req.headers['x-real-ip'] ||
+                         req.headers['x-forwarded-for'] ||
+                         req.socket.remoteAddress ||
+                         ''
         const allowed = officeSettings.allowedIps.split(',').map(ip => ip.trim())
         if (allowed.some(ip => clientIp.includes(ip))) {
+          isAllowed = true
+        }
+      }
+
+      // Check if employee has approved WFH or On Duty request for today to bypass geofencing
+      if (!isAllowed) {
+        const nowCheck = new Date()
+        const checkStart = getISTDayStart(nowCheck)
+        const checkEnd   = new Date(checkStart.getTime() + 24 * 60 * 60 * 1000 - 1)
+        const bypassRequest = await prisma.leaveRequest.findFirst({
+          where: {
+            empId,
+            status: 'Approved',
+            type: { in: ['WFH', 'On Duty'] },
+            OR: [
+              {
+                fromDate: { lte: checkEnd },
+                toDate: { gte: checkStart }
+              },
+              {
+                date: {
+                  gte: checkStart,
+                  lte: checkEnd
+                }
+              }
+            ]
+          }
+        })
+        if (bypassRequest) {
           isAllowed = true
         }
       }
