@@ -89,22 +89,80 @@ function StatusBadge({ status }) {
   )
 }
 
+function parseReason(reasonStr) {
+  if (!reasonStr) return { reason: '', actionedAt: null, actionedBy: null };
+  const match = reasonStr.match(/\n\[Actioned: (.+?) by (.+?)\]/);
+  if (match) {
+    return {
+      reason: reasonStr.replace(/\n\[Actioned: (.+?) by (.+?)\]/, '').trim(),
+      actionedAt: match[1],
+      actionedBy: match[2]
+    };
+  }
+  return { reason: reasonStr, actionedAt: null, actionedBy: null };
+}
+
+function formatAppliedTime(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+function formatActionedTime(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return d.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
 // Reason cell — shows full text wrapped, no truncation
-function ReasonCell({ reason }) {
-  if (!reason) return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+function ReasonCell({ reason, createdAt }) {
+  if (!reason) return (
+    <div style={{ minWidth: 140, maxWidth: 240 }}>
+      {createdAt && (
+        <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--text-muted)' }}>
+          Applied: {formatAppliedTime(createdAt)}
+        </p>
+      )}
+    </div>
+  )
+  const parsed = parseReason(reason);
   return (
-    <span style={{
+    <div style={{
       fontSize: 12,
       color: 'var(--text-secondary)',
       display: 'block',
-      lineHeight: 1.5,
+      lineHeight: 1.4,
       wordBreak: 'break-word',
       whiteSpace: 'normal',
       minWidth: 140,
-      maxWidth: 220,
+      maxWidth: 240,
     }}>
-      {reason}
-    </span>
+      <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 500 }}>{parsed.reason}</p>
+      {createdAt && (
+        <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--text-muted)' }}>
+          Applied: {formatAppliedTime(createdAt)}
+        </p>
+      )}
+      {parsed.actionedAt && (
+        <p style={{ margin: '2px 0 0', fontSize: 10, color: '#0e8ab5', fontWeight: 600 }}>
+          Actioned: {formatActionedTime(parsed.actionedAt)} ({parsed.actionedBy})
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -205,7 +263,7 @@ function LeaveCardMobile({ leave, onApprove, onReject, onDelete, updating }) {
       {/* Reason */}
       {leave.reason && (
         <div style={{ marginBottom: 12 }}>
-          <ReasonCell reason={leave.reason} />
+          <ReasonCell reason={leave.reason} createdAt={leave.createdAt} />
         </div>
       )}
 
@@ -588,7 +646,7 @@ export default function AdminLeave() {
             <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--card-border)' }}>
-                  {['Employee', 'Dept', 'Date / Time', 'Days', 'Type', 'Reason', 'Status', 'Actions'].map(h => (
+                  {['Employee', 'Dept', 'Date', 'Days', 'Type', 'Reason', 'Status', 'Actions'].map(h => (
                     <th key={h} style={{ textAlign: 'left', fontSize: 11, fontWeight: 600, padding: '12px 16px', color: 'var(--text-secondary)' }}>{h}</th>
                   ))}
                 </tr>
@@ -657,7 +715,7 @@ export default function AdminLeave() {
 
                       {/* Reason — full text, wraps naturally */}
                       <td style={{ padding: '12px 16px' }}>
-                        <ReasonCell reason={leave.reason} />
+                        <ReasonCell reason={leave.reason} createdAt={leave.createdAt} />
                       </td>
 
                       {/* Status */}

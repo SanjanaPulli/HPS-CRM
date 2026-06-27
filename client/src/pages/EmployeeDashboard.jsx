@@ -32,7 +32,7 @@ const AttendanceIcon = () => (
 function EmployeeDashboard() {
   const navigate = useNavigate()
   const employee = JSON.parse(localStorage.getItem('employeeAuth') || 'null')
-  const [attendanceStats, setAttendanceStats] = useState({ present: 0, late: 0, absent: 0, onLeave: 0 })
+  const [attendanceStats, setAttendanceStats] = useState({ present: 0, wfh: 0, late: 0, absent: 0, onLeave: 0 })
   const [pendingLeave, setPendingLeave] = useState(0)
   const [employeeDetails, setEmployeeDetails] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -55,7 +55,8 @@ function EmployeeDashboard() {
       ])
       const records = attRes.data
       setAttendanceStats({
-        present:  records.filter(r => ['Present', 'WFH', 'On Duty', 'Permission'].includes(r.status)).length,
+        present:  records.filter(r => ['Present', 'On Duty', 'Permission'].includes(r.status)).length,
+        wfh:      records.filter(r => r.status === 'WFH').length,
         late:     records.filter(r => r.status === 'Late').length,
         absent:   records.filter(r => r.status === 'Absent').length,
         onLeave:  records.filter(r => ['Leave', 'On Leave', 'Half Day'].includes(r.status)).length,
@@ -198,12 +199,13 @@ function EmployeeDashboard() {
       {/* Attendance stats */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)',
         gap: isMobile ? '12px' : '16px',
         marginBottom: isMobile ? '24px' : '32px'
       }}>
         {[
           { label: 'Present',  value: attendanceStats.present,  color: '#22C55E' },
+          { label: 'WFH',      value: attendanceStats.wfh,      color: '#1AABDB' },
           { label: 'Late',     value: attendanceStats.late,     color: '#EAB308' },
           { label: 'Absent',   value: attendanceStats.absent,   color: '#EF4444' },
           { label: 'On Leave', value: attendanceStats.onLeave,  color: '#3B82F6' },

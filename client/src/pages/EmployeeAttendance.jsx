@@ -70,22 +70,24 @@ function EmployeeAttendance() {
   }
 
   const filtered = filter === 'All' ? records : records.filter(r => {
-    if (filter === 'Present') return ['Present', 'WFH', 'On Duty', 'Permission'].includes(r.status);
+    if (filter === 'Present') return ['Present', 'On Duty', 'Permission'].includes(r.status);
     if (filter === 'On Leave') return ['Leave', 'On Leave', 'Half Day'].includes(r.status);
     return r.status === filter;
   })
 
   const stats = {
-    present: records.filter(r => ['Present', 'WFH', 'On Duty', 'Permission'].includes(r.status)).length,
+    present: records.filter(r => ['Present', 'On Duty', 'Permission'].includes(r.status)).length,
+    wfh: records.filter(r => r.status === 'WFH').length,
     late: records.filter(r => r.status === 'Late').length,
     absent: records.filter(r => r.status === 'Absent').length,
     onLeave: records.filter(r => ['Leave', 'On Leave', 'Half Day'].includes(r.status)).length,
   }
   const total = records.length
-  const attendancePct = total > 0 ? Math.round(((stats.present + stats.late) / total) * 100) : 0
+  const attendancePct = total > 0 ? Math.round(((stats.present + stats.wfh + stats.late) / total) * 100) : 0
 
   const statCards = [
     { label: 'Present', value: stats.present, color: '#10B981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)' },
+    { label: 'WFH', value: stats.wfh, color: '#3B82F6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)' },
     { label: 'Late', value: stats.late, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
     { label: 'Absent', value: stats.absent, color: '#EF4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.2)' },
     { label: 'On Leave', value: stats.onLeave, color: '#1AABDB', bg: 'rgba(26,171,219,0.08)', border: 'rgba(26,171,219,0.2)' },
@@ -134,7 +136,7 @@ function EmployeeAttendance() {
       {/* Stat cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)',
         gap: '16px',
         marginBottom: '24px'
       }}>
@@ -154,7 +156,7 @@ function EmployeeAttendance() {
 
       {/* Filter pills */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        {['All', 'Present', 'Late', 'Absent', 'On Leave'].map(f => (
+        {['All', 'Present', 'WFH', 'Late', 'Absent', 'On Leave'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
             style={{
               fontSize: '0.75rem', padding: '8px 16px', borderRadius: '9999px',
@@ -210,13 +212,15 @@ function EmployeeAttendance() {
                   <div>
                     <p style={{ fontSize: '0.675rem', color: 'var(--text-secondary)', textTransform: 'uppercase', margin: '0 0 2px' }}>Check In</p>
                     <p style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                      {new Date(record.checkInTime || record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      {record.checkInTime
+                        ? new Date(record.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                        : '—'}
                     </p>
                   </div>
                   <div>
                     <p style={{ fontSize: '0.675rem', color: 'var(--text-secondary)', textTransform: 'uppercase', margin: '0 0 2px' }}>Check Out</p>
                     <p style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                      {record.checkOutTime
+                      {record.checkInTime && record.checkOutTime
                         ? new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
                         : '—'}
                     </p>
@@ -279,14 +283,14 @@ function EmployeeAttendance() {
                     </span>
                   </td>
                   <td style={{ padding: '16px 24px', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {record.status === 'Absent' ? '—'
-                      : new Date(record.checkInTime || record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    {record.checkInTime
+                      ? new Date(record.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                      : '—'}
                   </td>
                   <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                    {record.status === 'Absent' ? '—'
-                      : record.checkOutTime
-                        ? new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-                        : '—'}
+                    {record.checkInTime && record.checkOutTime
+                      ? new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                      : '—'}
                   </td>
                   <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                     {record.hoursWorked != null ? `${record.hoursWorked.toFixed(2)}h` : '—'}

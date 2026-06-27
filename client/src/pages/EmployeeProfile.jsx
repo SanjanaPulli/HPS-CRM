@@ -145,6 +145,14 @@ function EmployeeProfile() {
         background: '#FFFFFF',
         lineColor: '#000000',
       })
+      const svg = barcodeRef.current
+      const width = svg.getAttribute('width')
+      const height = svg.getAttribute('height')
+      if (width && height) {
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
+        svg.removeAttribute('width')
+        svg.removeAttribute('height')
+      }
     }
   }, [employee])
 
@@ -211,7 +219,7 @@ function EmployeeProfile() {
   )
 
   return (
-    <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: '1000px', margin: '0 auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
 
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
@@ -228,7 +236,9 @@ function EmployeeProfile() {
       <div style={{
         display: 'grid',
         gridTemplateColumns: isLg ? '1fr 2fr' : '1fr',
-        gap: '24px'
+        gap: '24px',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
 
         {/* Left col */}
@@ -297,9 +307,10 @@ function EmployeeProfile() {
             </h3>
             <div style={{
               borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'center', marginBottom: '16px',
-              background: 'rgba(26,171,219,0.04)', border: '1px solid rgba(26,171,219,0.1)'
+              background: 'rgba(26,171,219,0.04)', border: '1px solid rgba(26,171,219,0.1)',
+              overflow: 'hidden', width: '100%'
             }}>
-              <svg ref={barcodeRef}></svg>
+              <svg ref={barcodeRef} style={{ width: '100%', height: 'auto', maxWidth: '260px', display: 'block' }}></svg>
             </div>
             <button
               onClick={downloadBarcode}

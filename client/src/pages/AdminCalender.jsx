@@ -10,10 +10,12 @@ const DAY_LABELS_FULL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
 function toYMD(date) {
   if (!date) return ''
-  // Strip Z/UTC offset so it's treated as local time
-  const clean = date.toString().replace('Z', '').replace('+00:00', '')
-  const d = new Date(clean)
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  const d = new Date(date)
+  const istDate = new Date(d.getTime() + (5.5 * 60 * 60 * 1000))
+  const y = istDate.getUTCFullYear()
+  const m = String(istDate.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(istDate.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function fmtTime(ts) {
@@ -98,7 +100,10 @@ function AdminDaySheet({ dayData, onClose, onUpdateLeave }) {
   }
 
   const presentCount = attendances.filter(a => a.status === 'Present').length
+  const wfhCount     = attendances.filter(a => a.status === 'WFH').length
+  const odCount      = attendances.filter(a => a.status === 'On Duty' || a.status === 'Permission').length
   const lateCount    = attendances.filter(a => a.status === 'Late').length
+  const absentCount  = attendances.filter(a => a.status === 'Absent').length
 
   return (
     <div
@@ -141,9 +146,24 @@ function AdminDaySheet({ dayData, onClose, onUpdateLeave }) {
                     {presentCount} Present
                   </SummaryChip>
                 )}
+                {wfhCount > 0 && (
+                  <SummaryChip color="#1AABDB" bg="rgba(26,171,219,0.08)" border="rgba(26,171,219,0.18)">
+                    {wfhCount} WFH
+                  </SummaryChip>
+                )}
+                {odCount > 0 && (
+                  <SummaryChip color="#8B5CF6" bg="rgba(139,92,246,0.08)" border="rgba(139,92,246,0.18)">
+                    {odCount} On Duty
+                  </SummaryChip>
+                )}
                 {lateCount > 0 && (
                   <SummaryChip color="#F59E0B" bg="rgba(245,158,11,0.08)" border="rgba(245,158,11,0.18)">
                     {lateCount} Late
+                  </SummaryChip>
+                )}
+                {absentCount > 0 && (
+                  <SummaryChip color="#EF4444" bg="rgba(239,68,68,0.08)" border="rgba(239,68,68,0.18)">
+                    {absentCount} Absent
                   </SummaryChip>
                 )}
                 {pendingLeaves.length > 0 && (
@@ -233,8 +253,13 @@ function AdminDaySheet({ dayData, onClose, onUpdateLeave }) {
             <section>
               <SectionLabel>Attendance</SectionLabel>
               {attendances.map(a => {
-                const statusColor = a.status === 'Present' ? '#10B981' : a.status === 'Late' ? '#F59E0B' : '#EF4444'
-                const statusBg    = a.status === 'Present' ? 'rgba(16,185,129,0.08)' : a.status === 'Late' ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)'
+                let statusColor = '#EF4444'
+                let statusBg    = 'rgba(239,68,68,0.08)'
+                if (a.status === 'Present') { statusColor = '#10B981'; statusBg = 'rgba(16,185,129,0.08)' }
+                else if (a.status === 'Late') { statusColor = '#F59E0B'; statusBg = 'rgba(245,158,11,0.08)' }
+                else if (a.status === 'WFH') { statusColor = '#1AABDB'; statusBg = 'rgba(26,171,219,0.08)' }
+                else if (a.status === 'On Duty' || a.status === 'Permission') { statusColor = '#8B5CF6'; statusBg = 'rgba(139,92,246,0.08)' }
+                else if (a.status === 'Leave' || a.status === 'On Leave' || a.status === 'Half Day') { statusColor = '#64748B'; statusBg = 'rgba(100,116,139,0.08)' }
                 return (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--card-border)', marginBottom: 6 }}>
                     <Avatar name={a.employee?.name || a.empId} />
@@ -388,10 +413,13 @@ function AdminCalendarCell({ dayData, onClick }) {
   const { dayNum, isCurrentMonth, isToday, isWeekend, holiday, attendances, leaves } = dayData
 
   const presentCount = attendances.filter(a => a.status === 'Present').length
+  const wfhCount     = attendances.filter(a => a.status === 'WFH').length
+  const odCount      = attendances.filter(a => a.status === 'On Duty' || a.status === 'Permission').length
   const lateCount    = attendances.filter(a => a.status === 'Late').length
+  const absentCount  = attendances.filter(a => a.status === 'Absent').length
   const onLeaveCount = leaves.filter(l => l.status === 'Approved').length
   const pendingCount = leaves.filter(l => l.status === 'Pending').length
-  const hasActivity  = isCurrentMonth && !holiday && !isWeekend && (presentCount + lateCount + onLeaveCount + pendingCount > 0)
+  const hasActivity  = isCurrentMonth && !holiday && !isWeekend && (presentCount + wfhCount + odCount + lateCount + absentCount + onLeaveCount + pendingCount > 0)
 
   const isHoliday = !!holiday
   const hc = holiday ? (HOLIDAY_COLORS[holiday.type] || HOLIDAY_COLORS.National) : null
@@ -400,9 +428,12 @@ function AdminCalendarCell({ dayData, onClick }) {
   if (isHoliday) cellBg = hc.bg
   else if (isWeekend) cellBg = 'rgba(148,163,184,0.04)'
 
-  // Dot indicators — max 3 dots, each color represents a category
+  // Dot indicators — max 5 dots, each color represents a status category
   const dots = []
-  if (presentCount > 0 || lateCount > 0) dots.push(lateCount > 0 ? '#F59E0B' : '#10B981')
+  if (presentCount > 0 || odCount > 0) dots.push('#10B981')
+  if (wfhCount > 0) dots.push('#1AABDB')
+  if (lateCount > 0) dots.push('#F59E0B')
+  if (absentCount > 0) dots.push('#EF4444')
   if (onLeaveCount > 0) dots.push('#64748B')
   if (pendingCount > 0) dots.push('#F59E0B')
 
@@ -595,6 +626,8 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
   const [selectedDay,setSelectedDay]= useState(null)
   const [showPicker, setShowPicker] = useState(false)
 
+  const [internalLeaves, setInternalLeaves] = useState([])
+
   const now = new Date()
   const [viewYear,  setViewYear]  = useState(now.getFullYear())
   const [viewMonth, setViewMonth] = useState(now.getMonth())
@@ -604,10 +637,12 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
       axios.get(`${BASE_URL}/api/attendance?all=true`).catch(() => ({ data: [] })),
       axios.get(`${BASE_URL}/api/holidays`).catch(() => ({ data: [] })),
       axios.get(`${BASE_URL}/api/settings`).catch(() => ({ data: {} })),
-    ]).then(([attRes, holRes, settingsRes]) => {
+      axios.get(`${BASE_URL}/api/leave`).catch(() => ({ data: [] })),
+    ]).then(([attRes, holRes, settingsRes, leaveRes]) => {
       setAttendance(attRes.data || [])
       setHolidays(holRes.data || [])
       setSettings(settingsRes.data || {})
+      setInternalLeaves(leaveRes.data || [])
       setLoading(false)
     })
   }, [])
@@ -630,13 +665,21 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
   holidays.forEach(h => { holidayMap[toYMD(h.date)] = h })
 
   const leaveMap = {}
-  ;(allLeaves || []).forEach(l => {
-    const fromRaw = (l.fromDate || l.date || '').toString().replace('Z','').replace('+00:00','')
-    const toRaw   = (l.toDate   || l.date || '').toString().replace('Z','').replace('+00:00','')
-    const from = new Date(fromRaw)
-    const to   = new Date(toRaw)
-    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-      const key = toYMD(d)
+  const leavesSource = allLeaves || internalLeaves
+  ;(leavesSource || []).forEach(l => {
+    const fromStr = (l.fromDate || l.date || '').toString().split('T')[0]
+    const toStr   = (l.toDate   || l.date || '').toString().split('T')[0]
+    if (!fromStr) return
+
+    const from = new Date(fromStr)
+    const to   = new Date(toStr || fromStr)
+
+    for (let d = new Date(from); d <= to; d.setUTCDate(d.getUTCDate() + 1)) {
+      const y = d.getUTCFullYear()
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(d.getUTCDate()).padStart(2, '0')
+      const key = `${y}-${m}-${day}`
+
       if (!leaveMap[key]) leaveMap[key] = []
       leaveMap[key].push(l)
     }
@@ -689,9 +732,7 @@ export default function AdminCalendar({ allLeaves, onLeaveUpdate }) {
 
   const handleLeaveUpdate = (leaveId, status) => {
     if (onLeaveUpdate) onLeaveUpdate(leaveId, status)
-    Object.keys(leaveMap).forEach(key => {
-      leaveMap[key] = leaveMap[key].map(l => l.id === leaveId ? { ...l, status } : l)
-    })
+    setInternalLeaves(prev => prev.map(l => l.id === leaveId ? { ...l, status } : l))
     if (selectedDay) {
       setSelectedDay(prev => ({
         ...prev,

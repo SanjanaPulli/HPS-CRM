@@ -301,6 +301,7 @@ function HolidaysTab() {
   const [status, setStatus]     = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ date: '', name: '', type: 'National' })
+  const [filterType, setFilterType] = useState('ALL')
 
   const currentYear = new Date().getFullYear()
 
@@ -361,8 +362,10 @@ function HolidaysTab() {
 
   const formatDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' })
 
+  const filtered = holidays.filter(h => filterType === 'ALL' || h.type === filterType)
+
   // Group by month
-  const grouped = holidays.reduce((acc, h) => {
+  const grouped = filtered.reduce((acc, h) => {
     const month = new Date(h.date).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
     if (!acc[month]) acc[month] = []
     acc[month].push(h)
@@ -411,20 +414,42 @@ function HolidaysTab() {
         </button>
       </div>
 
-      {/* Type legend */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {/* Type filters / legend */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={() => setFilterType('ALL')}
+          style={{
+            padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+            background: filterType === 'ALL' ? '#1AABDB' : 'var(--surface2)',
+            color: filterType === 'ALL' ? '#fff' : 'var(--text-secondary)',
+            border: filterType === 'ALL' ? '1px solid transparent' : '1px solid var(--card-border)'
+          }}
+        >
+          All
+        </button>
         {HOLIDAY_TYPES.map(t => {
           const c = HOLIDAY_COLORS[t]
+          const isSelected = filterType === t
           return (
-            <span key={t} style={{
-              padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
-              background: c.bg, color: c.color, border: `1px solid ${c.border}`
-            }}>{t}</span>
+            <button
+              key={t}
+              type="button"
+              onClick={() => setFilterType(t)}
+              style={{
+                padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                background: isSelected ? c.color : 'var(--surface2)',
+                color: isSelected ? '#fff' : 'var(--text-secondary)',
+                border: isSelected ? `1px solid ${c.color}` : '1px solid var(--card-border)',
+                boxShadow: isSelected ? `0 4px 12px ${c.bg}` : 'none'
+              }}
+            >
+              {t}
+            </button>
           )
         })}
-        <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center', marginLeft: 4 }}>
-          — Employees will see these when applying for leave
-        </span>
       </div>
 
       <StatusBanner status={status} />
@@ -449,14 +474,35 @@ function HolidaysTab() {
                 />
               </Field>
               <Field label="Type">
-                <select value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}
-                  style={{
-                    width: '100%', padding: '0.6rem 0.85rem', boxSizing: 'border-box',
-                    background: 'var(--input-bg)', border: '1px solid var(--input-border)',
-                    borderRadius: '8px', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none',
-                  }}>
-                  {HOLIDAY_TYPES.map(t => <option key={t}>{t}</option>)}
-                </select>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {HOLIDAY_TYPES.map(t => {
+                    const c = HOLIDAY_COLORS[t]
+                    const isSelected = form.type === t
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, type: t }))}
+                        style={{
+                          flex: 1,
+                          padding: '0.6rem 0.85rem',
+                          borderRadius: '8px',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          transition: 'all 0.15s',
+                          background: isSelected ? c.color : 'var(--input-bg)',
+                          color: isSelected ? '#fff' : 'var(--text-secondary)',
+                          border: isSelected ? `1px solid ${c.color}` : '1px solid var(--input-border)',
+                          boxShadow: isSelected ? `0 4px 12px ${c.bg}` : 'none'
+                        }}
+                      >
+                        {t}
+                      </button>
+                    )
+                  })}
+                </div>
               </Field>
             </div>
             <Field label="Holiday Name">

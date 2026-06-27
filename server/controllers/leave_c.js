@@ -115,9 +115,15 @@ const updateLeaveStatus = async (req, res) => {
     if (!['Approved', 'Rejected'].includes(status))
       return res.status(400).json({ error: 'Status must be Approved or Rejected' })
 
+    const currentLeave = await prisma.leaveRequest.findUnique({ where: { id: parseInt(req.params.id) } })
+    if (!currentLeave) return res.status(404).json({ error: 'Leave request not found' })
+
+    const cleanReason = (currentLeave.reason || '').replace(/\n\[Actioned: (.+?) by (.+?)\]/g, '').trim()
+    const updatedReason = `${cleanReason}\n[Actioned: ${new Date().toISOString()} by ${adminName}]`
+
     const leave = await prisma.leaveRequest.update({
       where: { id: parseInt(req.params.id) },
-      data: { status }
+      data: { status, reason: updatedReason }
     })
 
     const employee = await prisma.employee.findUnique({ where: { empId: leave.empId } })

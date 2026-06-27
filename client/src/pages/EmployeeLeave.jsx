@@ -2,7 +2,83 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import BASE_URL from '../config'
-import EmployeeCalendar from './EmployeeCalender'   // ← add this import
+import EmployeeCalendar from './EmployeeCalender'
+
+function parseReason(reasonStr) {
+  if (!reasonStr) return { reason: '', actionedAt: null, actionedBy: null };
+  const match = reasonStr.match(/\n\[Actioned: (.+?) by (.+?)\]/);
+  if (match) {
+    return {
+      reason: reasonStr.replace(/\n\[Actioned: (.+?) by (.+?)\]/, '').trim(),
+      actionedAt: match[1],
+      actionedBy: match[2]
+    };
+  }
+  return { reason: reasonStr, actionedAt: null, actionedBy: null };
+}
+
+function formatAppliedTime(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+function formatActionedTime(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return d.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+function ReasonCell({ reason, createdAt }) {
+  if (!reason) return (
+    <div style={{ minWidth: 140, maxWidth: 240 }}>
+      {createdAt && (
+        <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--text-muted)' }}>
+          Applied: {formatAppliedTime(createdAt)}
+        </p>
+      )}
+    </div>
+  )
+  const parsed = parseReason(reason);
+  return (
+    <div style={{
+      fontSize: 12,
+      color: 'var(--text-secondary)',
+      display: 'block',
+      lineHeight: 1.4,
+      wordBreak: 'break-word',
+      whiteSpace: 'normal',
+      minWidth: 140,
+      maxWidth: 240,
+    }}>
+      <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 500 }}>{parsed.reason}</p>
+      {createdAt && (
+        <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--text-muted)' }}>
+          Applied: {formatAppliedTime(createdAt)}
+        </p>
+      )}
+      {parsed.actionedAt && (
+        <p style={{ margin: '2px 0 0', fontSize: 10, color: '#0e8ab5', fontWeight: 600 }}>
+          Actioned: {formatActionedTime(parsed.actionedAt)} ({parsed.actionedBy})
+        </p>
+      )}
+    </div>
+  )
+}
 
 const LeaveIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -708,7 +784,7 @@ function EmployeeLeave() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                        {['Date / Time', 'Type', 'Reason', 'Status'].map(h => (
+                        {['Date', 'Type', 'Reason', 'Status'].map(h => (
                           <th key={h} style={{ textAlign: 'left', fontSize: 12, fontWeight: 600, padding: '12px 24px', color: 'var(--text-secondary)' }}>{h}</th>
                         ))}
                       </tr>
@@ -764,10 +840,8 @@ function EmployeeLeave() {
                               </span>
                             </td>
 
-                            <td style={{ padding: '16px 24px', fontSize: 14, maxWidth: 200, color: 'var(--text-secondary)' }}>
-                              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leave.reason}>
-                                {leave.reason}
-                              </span>
+                            <td style={{ padding: '16px 24px', fontSize: 14, maxWidth: 240, color: 'var(--text-secondary)' }}>
+                              <ReasonCell reason={leave.reason} createdAt={leave.createdAt} />
                             </td>
 
                             <td style={{ padding: '16px 24px' }}>
@@ -834,13 +908,20 @@ function EmployeeLeave() {
                           </span>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
-                            {cfg.label}
-                          </span>
-                          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leave.reason}>
-                            {leave.reason}
-                          </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+                              {cfg.label}
+                            </span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              Applied: {formatAppliedTime(leave.createdAt)}
+                            </span>
+                          </div>
+                          {leave.reason && (
+                            <div style={{ marginTop: 4, padding: '8px 12px', borderRadius: 8, background: 'var(--surface2)', border: '1px solid var(--card-border)' }}>
+                              <ReasonCell reason={leave.reason} createdAt={null} />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )

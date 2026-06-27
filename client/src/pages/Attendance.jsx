@@ -375,15 +375,21 @@ function Attendance() {
             { label: 'Department', value: record.employee.department || '—' },
             {
               label: 'Check In',
-              value: (record.checkInTime || record.timestamp)
-                ? <strong>{new Date(record.checkInTime || record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong>
+              value: record.checkInTime
+                ? <strong>{new Date(record.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong>
                 : '—',
             },
             {
               label: 'Check Out',
-              value: record.checkOutTime
-                ? <><strong>✅ {new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong></>
-                : '⏳ Pending',
+              value: record.checkInTime ? (
+                record.checkOutTime ? (
+                  <><strong>✅ {new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong></>
+                ) : (
+                  '⏳ Pending'
+                )
+              ) : (
+                '—'
+              ),
             },
             { label: 'Hours', value: record.hoursWorked != null ? `${record.hoursWorked}h` : '—' },
             { label: 'OT', value: record.overtimeMinutes != null
@@ -497,16 +503,22 @@ function Attendance() {
 
         {/* Check In */}
         <td style={{ padding: '16px 24px', fontSize: 14, color: 'var(--text-secondary)' }}>
-          {record.checkInTime || record.timestamp
-            ? <strong style={{ color: 'var(--text-primary)' }}>{new Date(record.checkInTime || record.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong>
+          {record.checkInTime
+            ? <strong style={{ color: 'var(--text-primary)' }}>{new Date(record.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong>
             : '—'}
         </td>
 
         {/* Check Out */}
         <td style={{ padding: '16px 24px', fontSize: 14, color: 'var(--text-secondary)' }}>
-          {record.checkOutTime
-            ? <strong style={{ color: 'var(--text-primary)' }}>{new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong>
-            : <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(245,158,11,0.1)', color: '#D97706' }}>Pending</span>}
+          {record.checkInTime ? (
+            record.checkOutTime ? (
+              <strong style={{ color: 'var(--text-primary)' }}>{new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong>
+            ) : (
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(245,158,11,0.1)', color: '#D97706' }}>Pending</span>
+            )
+          ) : (
+            '—'
+          )}
         </td>
 
         {/* Hours */}

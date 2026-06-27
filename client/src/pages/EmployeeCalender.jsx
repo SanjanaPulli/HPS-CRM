@@ -41,10 +41,12 @@ const STATUS_NOTATION = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function toYMD(date) {
+  if (!date) return ''
   const d = new Date(date)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
+  const istDate = new Date(d.getTime() + (5.5 * 60 * 60 * 1000))
+  const y = istDate.getUTCFullYear()
+  const m = String(istDate.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(istDate.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
@@ -167,8 +169,8 @@ function DaySheet({ day, onClose }) {
             </div>
           )}
 
-          {/* Attendance — only show if NOT covered by leave */}
-          {attendance && !isCoveredByLeave ? (
+          {/* Attendance */}
+          {attendance ? (
             <div style={{ padding: '14px', borderRadius: 12, background: 'var(--surface2)', border: '1px solid var(--card-border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Attendance</p>
@@ -272,16 +274,20 @@ function CalendarCell({ dayData, onClick }) {
   const pendingLeaves  = leaves.filter(l => l.status === 'Pending')
   const approvedType   = approvedLeaves[0] ? resolveRequestType(approvedLeaves[0]) : null
 
-  // Priority: approved leave/WFH/OD > holiday > weekend > attendance status
-  const primaryStatus = approvedType
+  const primaryStatusRaw = attendance
+    ? attendance.status
+    : approvedType
     ? approvedType
     : holiday
     ? 'Holiday'
     : isWeekend
       ? 'Weekend'
-      : attendance
-        ? attendance.status
-        : null
+      : null
+
+  let primaryStatus = primaryStatusRaw
+  if (primaryStatusRaw === 'On Leave' || primaryStatusRaw === 'Half Day') {
+    primaryStatus = 'Leave'
+  }
 
   const cfg = primaryStatus ? (STATUS_CONFIG[primaryStatus] || STATUS_CONFIG.Leave) : null
   const hasPending = pendingLeaves.length > 0
@@ -475,10 +481,19 @@ export default function EmployeeCalendar({ empId, holidays: propHolidays, myLeav
 
   const leaveMap = {}
   myLeaves.forEach(l => {
-    const from = new Date(l.fromDate || l.date)
-    const to   = new Date(l.toDate   || l.date)
-    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-      const key = toYMD(d)
+    const fromStr = (l.fromDate || l.date || '').toString().split('T')[0]
+    const toStr   = (l.toDate   || l.date || '').toString().split('T')[0]
+    if (!fromStr) return
+
+    const from = new Date(fromStr)
+    const to   = new Date(toStr || fromStr)
+
+    for (let d = new Date(from); d <= to; d.setUTCDate(d.getUTCDate() + 1)) {
+      const y = d.getUTCFullYear()
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(d.getUTCDate()).padStart(2, '0')
+      const key = `${y}-${m}-${day}`
+
       if (!leaveMap[key]) leaveMap[key] = []
       leaveMap[key].push(l)
     }
