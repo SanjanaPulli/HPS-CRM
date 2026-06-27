@@ -65,6 +65,7 @@ export default function ScanPage() {
         const data = await res.json();
         if (res.ok) {
           localStorage.setItem("employeeAuth", JSON.stringify(data.employee));
+          localStorage.setItem("employeeToken", data.token);
           navigate("/employee/dashboard");
           return;
         }

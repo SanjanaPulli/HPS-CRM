@@ -75,7 +75,7 @@ function EmployeeLayout() {
   useEffect(() => { if (!employee) navigate('/employee/login') }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('employeeAuth')
+    localStorage.clear()
     navigate('/')
   }
 

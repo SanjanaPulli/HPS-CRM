@@ -131,12 +131,8 @@ export default function AdminLayout() {
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem("adminAuth")
-    localStorage.removeItem("adminName")
-    localStorage.removeItem("role")
-    localStorage.removeItem("adminToken")
-    localStorage.removeItem("employeeAuth")
-    navigate("/")
+    localStorage.clear()
+    navigate('/')
   }
 
   const role = localStorage.getItem("role")

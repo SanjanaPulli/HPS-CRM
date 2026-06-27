@@ -23,6 +23,21 @@ axios.interceptors.request.use(config => {
   return Promise.reject(error)
 })
 
+// Intercept Axios responses to automatically sign out on unauthorized or forbidden access
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      const url = error.config?.url || ''
+      if (!url.includes('/login')) {
+        localStorage.clear()
+        window.location.href = '/'
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
 // Intercept Native Fetch requests to append X-Admin-Name and Authorization headers dynamically
 const { fetch: originalFetch } = window
 window.fetch = async (...args) => {
