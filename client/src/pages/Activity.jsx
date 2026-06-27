@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, Fragment } from "react";
 import BASE_URL from "../config";
 
 const CATEGORIES = ["ALL", "AUTH", "ADMIN", "EMPLOYEE", "ATTENDANCE", "LEAVE", "WORK"];
@@ -501,72 +501,83 @@ export default function ActivityLog() {
               <table style={{ width: "100%", minWidth: "950px", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--card-border)", background: "var(--surface2)" }}>
-                    {['Time & Rel', 'User', 'Category', 'Action', 'Details', 'Date & Time'].map(h => (
-                      <th key={h} style={{ textAlign: "left", fontSize: 11, fontWeight: 700, padding: "14px 18px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                    {[
+                      { label: 'Time & Rel', width: '130px' },
+                      { label: 'User',       width: '180px' },
+                      { label: 'Category',   width: '130px' },
+                      { label: 'Action',     width: '190px' },
+                      { label: 'Details',    maxWidth: '250px' },
+                      { label: 'Date & Time',width: '190px' }
+                    ].map(h => (
+                      <th key={h.label} style={{
+                        textAlign: "left",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "14px 18px",
+                        color: "var(--text-secondary)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        width: h.width || "auto",
+                        maxWidth: h.maxWidth || "none"
+                      }}>{h.label}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {grouped.map((group, gi) => (
-                    <tr key={gi}>
-                      <td colSpan={6} style={{ padding: 0 }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                          <tbody>
-                            <tr style={{ background: "var(--surface2)", borderBottom: "1px solid var(--card-border)" }}>
-                              <td colSpan={6} style={{ padding: "8px 18px", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span>{group.label}</span>
-                                  <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 999, fontWeight: 600, background: "var(--card-border)", color: "var(--text-muted)" }}>
-                                    {group.items.length}
-                                  </span>
+                    <Fragment key={gi}>
+                      <tr style={{ background: "var(--surface2)", borderBottom: "1px solid var(--card-border)" }}>
+                        <td colSpan={6} style={{ padding: "8px 18px", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span>{group.label}</span>
+                            <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 999, fontWeight: 600, background: "var(--card-border)", color: "var(--text-muted)" }}>
+                              {group.items.length}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      {group.items.map((a) => {
+                        const isAdmin = !a.empId || a.employeeName === "Admin";
+                        return (
+                          <tr
+                            key={a.id}
+                            style={{ borderBottom: "1px solid var(--card-border)", transition: "background 0.12s" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "var(--surface2)"}
+                            onMouseLeave={e => e.currentTarget.style.background = ""}
+                          >
+                            <td style={{ padding: "14px 18px", width: "130px" }}>
+                              <div>
+                                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{formatRelative(a.createdAt)}</p>
+                                <p style={{ margin: "1px 0 0", fontSize: 10, color: "var(--text-muted)" }}>
+                                  {new Date(a.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                </p>
+                              </div>
+                            </td>
+                            <td style={{ padding: "14px 18px", width: "180px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <Avatar name={a.employeeName} isAdmin={isAdmin} size={28} />
+                                <div style={{ minWidth: 0 }}>
+                                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.employeeName || "Admin"}</p>
+                                  <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.empId || "admin"}</p>
                                 </div>
-                              </td>
-                            </tr>
-                            {group.items.map((a, i) => {
-                              const isAdmin = !a.empId || a.employeeName === "Admin";
-                              return (
-                                <tr
-                                  key={a.id}
-                                  style={{ borderBottom: i === group.items.length - 1 ? "none" : "1px solid var(--card-border)", transition: "background 0.12s" }}
-                                  onMouseEnter={e => e.currentTarget.style.background = "var(--surface2)"}
-                                  onMouseLeave={e => e.currentTarget.style.background = ""}
-                                >
-                                  <td style={{ padding: "14px 18px", width: "130px" }}>
-                                    <div>
-                                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{formatRelative(a.createdAt)}</p>
-                                      <p style={{ margin: "1px 0 0", fontSize: 10, color: "var(--text-muted)" }}>
-                                        {new Date(a.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                                      </p>
-                                    </div>
-                                  </td>
-                                  <td style={{ padding: "14px 18px", width: "180px" }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                      <Avatar name={a.employeeName} isAdmin={isAdmin} size={28} />
-                                      <div style={{ minWidth: 0 }}>
-                                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.employeeName || "Admin"}</p>
-                                        <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.empId || "admin"}</p>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td style={{ padding: "14px 18px", width: "130px" }}>
-                                    <CatPill category={a.category} />
-                                  </td>
-                                  <td style={{ padding: "14px 18px", width: "190px", fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
-                                    {a.action}
-                                  </td>
-                                  <td style={{ padding: "14px 18px", fontSize: 12, color: "var(--text-secondary)", maxWidth: "250px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.details || ""}>
-                                    {a.details || "—"}
-                                  </td>
-                                  <td style={{ padding: "14px 18px", width: "190px", fontSize: 11, color: "var(--text-muted)" }}>
-                                    {formatFullTime(a.createdAt)}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
+                              </div>
+                            </td>
+                            <td style={{ padding: "14px 18px", width: "130px" }}>
+                              <CatPill category={a.category} />
+                            </td>
+                            <td style={{ padding: "14px 18px", width: "190px", fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
+                              {a.action}
+                            </td>
+                            <td style={{ padding: "14px 18px", fontSize: 12, color: "var(--text-secondary)", maxWidth: "250px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.details || ""}>
+                              {a.details || "—"}
+                            </td>
+                            <td style={{ padding: "14px 18px", width: "190px", fontSize: 11, color: "var(--text-muted)" }}>
+                              {formatFullTime(a.createdAt)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
