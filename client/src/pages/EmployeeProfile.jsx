@@ -219,10 +219,10 @@ function EmployeeProfile() {
   )
 
   return (
-    <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: '1000px', margin: '0 auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
+    <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", width: '100%', maxWidth: '1000px', margin: '0 auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
+      <div style={{ marginBottom: '32px', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
           <div style={{ width: '4px', height: '24px', borderRadius: '4px', background: '#1AABDB', flexShrink: 0 }} />
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>My Profile</h1>
@@ -238,16 +238,17 @@ function EmployeeProfile() {
         gridTemplateColumns: isLg ? '1fr 2fr' : '1fr',
         gap: '24px',
         width: '100%',
+        maxWidth: '100%',
         boxSizing: 'border-box'
       }}>
 
         {/* Left col */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
 
           {/* ID Card */}
           <div style={{
             borderRadius: '16px', padding: '24px', textAlign: 'center',
-            position: 'relative', overflow: 'hidden',
+            position: 'relative', overflow: 'hidden', width: '100%', maxWidth: '100%', boxSizing: 'border-box',
             background: 'var(--card-bg)', border: '1px solid var(--card-border)'
           }}>
             {/* subtle bg glow */}
@@ -301,7 +302,7 @@ function EmployeeProfile() {
           </div>
 
           {/* Barcode card */}
-          <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+          <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
             <h3 style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: '16px', textAlign: 'center', color: 'var(--text-primary)', margin: '0 0 16px' }}>
               My Barcode
             </h3>
@@ -330,7 +331,7 @@ function EmployeeProfile() {
         </div>
 
         {/* Right col */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
 
           {/* Personal info */}
           <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>

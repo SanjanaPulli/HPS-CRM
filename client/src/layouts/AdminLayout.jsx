@@ -378,6 +378,7 @@ export default function AdminLayout() {
             flexDirection: "column",
             minHeight: "100svh",
             transition: "margin-left 0.3s",
+            minWidth: 0,
           }}
         >
           {/* Topbar */}

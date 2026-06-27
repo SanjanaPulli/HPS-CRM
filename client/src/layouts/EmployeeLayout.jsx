@@ -291,7 +291,8 @@ function EmployeeLayout() {
       {/* ── Main content ── */}
       <div style={{
         display: 'flex', flexDirection: 'column', minHeight: '100vh',
-        transition: 'all 0.3s', marginLeft: isMobile ? '0' : sidebarW, flex: 1
+        transition: 'all 0.3s', marginLeft: isMobile ? '0' : sidebarW, flex: 1,
+        minWidth: 0
       }}>
 
         {/* Topbar */}
