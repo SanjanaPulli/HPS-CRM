@@ -220,6 +220,33 @@ function EmployeeProfile() {
 
   return (
     <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", width: '100%', maxWidth: '1000px', margin: '0 auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
+      <style>{`
+        .profile-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 24px;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        @media (min-width: 1024px) {
+          .profile-grid {
+            grid-template-columns: 1fr 2fr;
+          }
+        }
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 4px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        @media (min-width: 768px) {
+          .info-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+      `}</style>
 
       {/* Header */}
       <div style={{ marginBottom: '32px', width: '100%', boxSizing: 'border-box' }}>
@@ -233,14 +260,7 @@ function EmployeeProfile() {
       </div>
 
       {/* Layout grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isLg ? '1fr 2fr' : '1fr',
-        gap: '24px',
-        width: '100%',
-        maxWidth: '100%',
-        boxSizing: 'border-box'
-      }}>
+      <div className="profile-grid">
 
         {/* Left col */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
@@ -338,11 +358,7 @@ function EmployeeProfile() {
             <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '20px', color: 'var(--text-primary)', margin: '0 0 20px' }}>
               Personal Information
             </h3>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-              gap: '4px'
-            }}>
+            <div className="info-grid">
               <InfoField label="Full Name" value={employee.name} />
               <InfoField label="Employee ID" value={employee.empId} />
               <InfoField label="Email" value={employee.email} />
@@ -359,11 +375,7 @@ function EmployeeProfile() {
             <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '20px', color: 'var(--text-primary)', margin: '0 0 20px' }}>
               Work Information
             </h3>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-              gap: '4px'
-            }}>
+            <div className="info-grid">
               <InfoField label="Department" value={employee.department} />
               <InfoField label="Position" value={employee.position} />
               <InfoField label="Team Lead" value={employee.teamLead} />

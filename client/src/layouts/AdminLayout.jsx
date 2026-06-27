@@ -369,10 +369,21 @@ export default function AdminLayout() {
           </>
         )}
 
+        <style>{`
+          .admin-main-content {
+            margin-left: ${sidebarW} !important;
+          }
+          @media (max-width: 767px) {
+            .admin-main-content {
+              margin-left: 0 !important;
+            }
+          }
+        `}</style>
+
         {/* ── Main content ── */}
         <div
+          className="admin-main-content"
           style={{
-            marginLeft: isMobile ? 0 : sidebarW,
             flex: 1,
             display: "flex",
             flexDirection: "column",

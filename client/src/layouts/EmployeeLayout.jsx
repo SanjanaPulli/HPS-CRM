@@ -288,10 +288,21 @@ function EmployeeLayout() {
         </>
       )}
 
+      <style>{`
+        .employee-main-content {
+          margin-left: ${sidebarW} !important;
+        }
+        @media (max-width: 767px) {
+          .employee-main-content {
+            margin-left: 0 !important;
+          }
+        }
+      `}</style>
+
       {/* ── Main content ── */}
-      <div style={{
+      <div className="employee-main-content" style={{
         display: 'flex', flexDirection: 'column', minHeight: '100vh',
-        transition: 'all 0.3s', marginLeft: isMobile ? '0' : sidebarW, flex: 1,
+        transition: 'all 0.3s', flex: 1,
         minWidth: 0
       }}>
 
