@@ -425,17 +425,28 @@ const parseTimeStr = (timeStr) => {
 const updateAttendance = async (req, res) => {
   try {
     const { id } = req.params
-    const { status, checkInTimeStr, checkOutTimeStr, hoursWorked, overtimeMinutes } = req.body
+    const { status, checkInTimeStr, checkOutTimeStr, hoursWorked, overtimeMinutes, date } = req.body
 
-    const existing = await prisma.attendance.findUnique({
-      where: { id: parseInt(id) },
-      include: { employee: true }
-    })
-    if (!existing) return res.status(404).json({ error: 'Attendance record not found' })
+    let existing = null
+    let empId = null
+    let baseDate = null
+
+    if (id.startsWith('temp-')) {
+      empId = id.replace('temp-', '')
+      const dateStr = date || new Date().toISOString().split('T')[0]
+      baseDate = new Date(dateStr + 'T00:00:00+05:30')
+    } else {
+      existing = await prisma.attendance.findUnique({
+        where: { id: parseInt(id) },
+        include: { employee: true }
+      })
+      if (!existing) return res.status(404).json({ error: 'Attendance record not found' })
+      empId = existing.empId
+      baseDate = existing.checkInTime || existing.timestamp || new Date()
+    }
 
     const updateData = { status }
 
-    const baseDate = existing.checkInTime || existing.timestamp || new Date()
     const offset = 5.5 * 60 * 60 * 1000
     const localIST = new Date(new Date(baseDate).getTime() + offset)
 
@@ -481,8 +492,8 @@ const updateAttendance = async (req, res) => {
       }
     }
 
-    const finalCheckIn = updateData.checkInTime !== undefined ? updateData.checkInTime : existing.checkInTime
-    const finalCheckOut = updateData.checkOutTime !== undefined ? updateData.checkOutTime : existing.checkOutTime
+    const finalCheckIn = updateData.checkInTime !== undefined ? updateData.checkInTime : (existing ? existing.checkInTime : null)
+    const finalCheckOut = updateData.checkOutTime !== undefined ? updateData.checkOutTime : (existing ? existing.checkOutTime : null)
 
     if (finalCheckIn && finalCheckOut) {
       const diffMs = finalCheckOut.getTime() - finalCheckIn.getTime()
@@ -503,17 +514,37 @@ const updateAttendance = async (req, res) => {
       if (overtimeMinutes !== undefined) updateData.overtimeMinutes = overtimeMinutes === null ? null : parseInt(overtimeMinutes)
     }
 
-    const updated = await prisma.attendance.update({
-      where: { id: parseInt(id) },
-      data: updateData
-    })
+    let updated;
+    let employeeName = 'Employee';
+
+    if (existing) {
+      employeeName = existing.employee.name
+      updated = await prisma.attendance.update({
+        where: { id: parseInt(id) },
+        data: updateData
+      })
+    } else {
+      const employee = await prisma.employee.findUnique({ where: { empId } })
+      if (employee) employeeName = employee.name
+      updated = await prisma.attendance.create({
+        data: {
+          empId,
+          status: updateData.status,
+          checkInTime: updateData.checkInTime,
+          checkOutTime: updateData.checkOutTime,
+          hoursWorked: updateData.hoursWorked,
+          overtimeMinutes: updateData.overtimeMinutes,
+          timestamp: baseDate
+        }
+      })
+    }
 
     await logActivity({
       empId: null,
       employeeName: 'Admin/Manager',
       action: 'Attendance Edited',
       category: 'ATTENDANCE',
-      details: `Edited record ID ${id} of ${existing.employee.name}. Status: ${status}`
+      details: `Edited record ID ${updated.id} of ${employeeName}. Status: ${status}`
     })
 
     res.json(updated)

@@ -158,7 +158,8 @@ function Attendance() {
         checkInTimeStr: editForm.checkInTimeStr || null,
         checkOutTimeStr: editForm.checkOutTimeStr || null,
         hoursWorked: editForm.hoursWorked === '' ? null : parseFloat(editForm.hoursWorked),
-        overtimeMinutes: editForm.overtimeMinutes === '' ? null : parseInt(editForm.overtimeMinutes)
+        overtimeMinutes: editForm.overtimeMinutes === '' ? null : parseInt(editForm.overtimeMinutes),
+        date: selectedDate
       }
       await axios.put(`${BASE_URL}/api/attendance/${editingRecord.id}`, payload)
       setEditingRecord(null)
