@@ -396,10 +396,33 @@ export default function ScanPage() {
           <h1 className="scan-heading">
             Welcome to <span>HPS Portal</span>
           </h1>
-          <p className="scan-subtext">
+          <p className="scan-subtext" style={{ marginBottom: settings?.officeAddress ? 12 : 20 }}>
             Harsha Perfect Solutions Management Portal.<br />
             Sign in with your credentials to access your dashboard.
           </p>
+
+          {settings?.officeAddress && (
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(26,171,219,0.08)",
+              border: "1px solid rgba(26,171,219,0.18)",
+              color: "#0e8ab5",
+              padding: "6px 14px",
+              borderRadius: 99,
+              fontSize: 12,
+              fontWeight: 600,
+              marginBottom: 20,
+              lineHeight: 1.2
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>{settings.officeAddress}</span>
+            </div>
+          )}
 
           <div className="scan-card-wrap">
             {/* Role tabs */}
