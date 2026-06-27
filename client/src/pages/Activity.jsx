@@ -147,26 +147,26 @@ function ActivityRow({ activity, isLast }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 16,
-      padding: "13px 20px",
+      padding: "12px 20px",
       borderBottom: isLast ? "none" : "1px solid var(--card-border)",
       transition: "background 0.12s",
     }}
       onMouseEnter={e => e.currentTarget.style.background = "var(--surface2)"}
       onMouseLeave={e => e.currentTarget.style.background = "transparent"}
     >
-      {/* Dot */}
-      <div style={{ width: 7, height: 7, borderRadius: "50%", background: getCfg(activity.category).color, flexShrink: 0 }} />
-
-      {/* Time */}
-      <div style={{ width: 100, flexShrink: 0 }}>
-        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{formatRelative(activity.createdAt)}</p>
-        <p style={{ margin: "1px 0 0", fontSize: 10, color: "var(--text-muted)" }}>
-          {new Date(activity.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-        </p>
+      {/* Dot + Time */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, width: 120, flexShrink: 0 }}>
+        <div style={{ width: 7, height: 7, borderRadius: "50%", background: getCfg(activity.category).color, flexShrink: 0 }} />
+        <div>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{formatRelative(activity.createdAt)}</p>
+          <p style={{ margin: "1px 0 0", fontSize: 10, color: "var(--text-muted)" }}>
+            {new Date(activity.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </p>
+        </div>
       </div>
 
       {/* Person */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, width: 150, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, width: 160, flexShrink: 0 }}>
         <Avatar name={activity.employeeName} isAdmin={isAdmin} size={28} />
         <div style={{ minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -177,13 +177,13 @@ function ActivityRow({ activity, isLast }) {
       </div>
 
       {/* Category */}
-      <div style={{ width: 110, flexShrink: 0 }}>
+      <div style={{ width: 120, flexShrink: 0 }}>
         <CatPill category={activity.category} />
       </div>
 
       {/* Action */}
-      <div style={{ width: 170, flexShrink: 0 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>{activity.action}</p>
+      <div style={{ width: 180, flexShrink: 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activity.action}</p>
       </div>
 
       {/* Details */}
@@ -195,9 +195,11 @@ function ActivityRow({ activity, isLast }) {
       </div>
 
       {/* Full time */}
-      <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
-        {formatFullTime(activity.createdAt)}
-      </p>
+      <div style={{ width: 180, flexShrink: 0, textAlign: "right" }}>
+        <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>
+          {formatFullTime(activity.createdAt)}
+        </p>
+      </div>
     </div>
   );
 }
@@ -285,8 +287,30 @@ export default function ActivityLog() {
     transition: "border-color 0.15s",
   };
 
+  const exportCSV = () => {
+    const headers = ['Timestamp', 'Employee Name', 'Emp ID', 'Category', 'Action', 'Details'];
+    const rows = filtered.map(a => [
+      formatFullTime(a.createdAt),
+      a.employeeName || 'Admin',
+      a.empId || 'admin',
+      a.category,
+      a.action,
+      a.details || '—'
+    ]);
+    const csvContent = [headers, ...rows]
+      .map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `activity-log-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  };
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: "100%" }}>
 
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -296,23 +320,42 @@ export default function ActivityLog() {
             System audit trail · refreshes every 30s
           </p>
         </div>
-        <button
-          onClick={fetchActivities}
-          style={{
-            display: "flex", alignItems: "center", gap: 7,
-            padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-            background: "var(--card-bg)", border: "1px solid var(--card-border)",
-            color: "var(--text-secondary)", cursor: "pointer", fontFamily: "inherit",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = "#1AABDB"; e.currentTarget.style.color = "#1AABDB"; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--card-border)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-          </svg>
-          Refresh
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={exportCSV}
+            style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+              background: "#1AABDB", border: "none",
+              color: "#fff", cursor: "pointer", fontFamily: "inherit",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#1595c0"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#1AABDB"; }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export CSV
+          </button>
+          <button
+            onClick={fetchActivities}
+            style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+              background: "var(--card-bg)", border: "1px solid var(--card-border)",
+              color: "var(--text-secondary)", cursor: "pointer", fontFamily: "inherit",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "#1AABDB"; e.currentTarget.style.color = "#1AABDB"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--card-border)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── Stats — 3-col always, stack on very small ── */}
@@ -384,8 +427,8 @@ export default function ActivityLog() {
               return (
                 <button key={cat} onClick={() => setCategory(cat)} style={{
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                  flex: "1 1 auto", minWidth: "calc(25% - 6px)",
-                  padding: "6px 10px", borderRadius: 9, fontSize: 11, fontWeight: 600,
+                  flex: "0 0 auto", minWidth: "auto",
+                  padding: "6px 14px", borderRadius: 9999, fontSize: 12, fontWeight: 600,
                   cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
                   background: isActive ? (cat === "ALL" ? "#1AABDB" : cfg.color) : "var(--surface2)",
                   color: isActive ? "#fff" : "var(--text-secondary)",
@@ -410,7 +453,7 @@ export default function ActivityLog() {
       )}
 
       {/* ── Activity list ── */}
-      <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: 14, overflow: "hidden", maxWidth: "100%" }}>
 
         {loading ? (
           <div style={{ padding: 48, textAlign: "center" }}>
@@ -428,39 +471,107 @@ export default function ActivityLog() {
             <p style={{ fontSize: 12, margin: 0, color: "var(--text-muted)" }}>Try adjusting your filters</p>
           </div>
         ) : (
-          grouped.map((group, gi) => (
-            <div key={gi}>
-              {/* Date group header */}
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 16px", position: "sticky", top: 0, zIndex: 10,
-                background: "var(--surface2)",
-                borderBottom: "1px solid var(--card-border)",
-                borderTop: gi > 0 ? "1px solid var(--card-border)" : "none",
-              }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>{group.label}</span>
-                <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 999, fontWeight: 600, background: "var(--card-border)", color: "var(--text-muted)" }}>
-                  {group.items.length}
-                </span>
-              </div>
-
-              {/* Mobile cards */}
-              <div className="activity-mobile">
-                {group.items.map((a, i) => (
-                  <ActivityCard key={a.id} activity={a} isLast={i === group.items.length - 1} />
-                ))}
-              </div>
-
-              {/* Desktop rows */}
-              <div className="activity-desktop" style={{ overflowX: 'auto', width: '100%' }}>
-                <div style={{ minWidth: '750px' }}>
+          <>
+            {/* ── Mobile cards ── */}
+            <div className="activity-mobile">
+              {grouped.map((group, gi) => (
+                <div key={gi}>
+                  {/* Date group header */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 16px",
+                    background: "var(--surface2)",
+                    borderBottom: "1px solid var(--card-border)",
+                    borderTop: gi > 0 ? "1px solid var(--card-border)" : "none",
+                  }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>{group.label}</span>
+                    <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 999, fontWeight: 600, background: "var(--card-border)", color: "var(--text-muted)" }}>
+                      {group.items.length}
+                    </span>
+                  </div>
                   {group.items.map((a, i) => (
-                    <ActivityRow key={a.id} activity={a} isLast={i === group.items.length - 1} />
+                    <ActivityCard key={a.id} activity={a} isLast={i === group.items.length - 1} />
                   ))}
                 </div>
-              </div>
+              ))}
             </div>
-          ))
+
+            {/* ── Desktop table ── */}
+            <div className="activity-desktop" style={{ overflowX: "auto", width: "100%", maxWidth: "100%" }}>
+              <table style={{ width: "100%", minWidth: "950px", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--card-border)", background: "var(--surface2)" }}>
+                    {['Time & Rel', 'User', 'Category', 'Action', 'Details', 'Date & Time'].map(h => (
+                      <th key={h} style={{ textAlign: "left", fontSize: 11, fontWeight: 700, padding: "14px 18px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {grouped.map((group, gi) => (
+                    <tr key={gi}>
+                      <td colSpan={6} style={{ padding: 0 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <tbody>
+                            <tr style={{ background: "var(--surface2)", borderBottom: "1px solid var(--card-border)" }}>
+                              <td colSpan={6} style={{ padding: "8px 18px", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span>{group.label}</span>
+                                  <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 999, fontWeight: 600, background: "var(--card-border)", color: "var(--text-muted)" }}>
+                                    {group.items.length}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                            {group.items.map((a, i) => {
+                              const isAdmin = !a.empId || a.employeeName === "Admin";
+                              return (
+                                <tr
+                                  key={a.id}
+                                  style={{ borderBottom: i === group.items.length - 1 ? "none" : "1px solid var(--card-border)", transition: "background 0.12s" }}
+                                  onMouseEnter={e => e.currentTarget.style.background = "var(--surface2)"}
+                                  onMouseLeave={e => e.currentTarget.style.background = ""}
+                                >
+                                  <td style={{ padding: "14px 18px", width: "130px" }}>
+                                    <div>
+                                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{formatRelative(a.createdAt)}</p>
+                                      <p style={{ margin: "1px 0 0", fontSize: 10, color: "var(--text-muted)" }}>
+                                        {new Date(a.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                      </p>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: "14px 18px", width: "180px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                      <Avatar name={a.employeeName} isAdmin={isAdmin} size={28} />
+                                      <div style={{ minWidth: 0 }}>
+                                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.employeeName || "Admin"}</p>
+                                        <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.empId || "admin"}</p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: "14px 18px", width: "130px" }}>
+                                    <CatPill category={a.category} />
+                                  </td>
+                                  <td style={{ padding: "14px 18px", width: "190px", fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
+                                    {a.action}
+                                  </td>
+                                  <td style={{ padding: "14px 18px", fontSize: 12, color: "var(--text-secondary)", maxWidth: "250px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.details || ""}>
+                                    {a.details || "—"}
+                                  </td>
+                                  <td style={{ padding: "14px 18px", width: "190px", fontSize: 11, color: "var(--text-muted)" }}>
+                                    {formatFullTime(a.createdAt)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
