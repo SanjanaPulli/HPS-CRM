@@ -257,17 +257,17 @@ function EmployeeProfile() {
               background: 'radial-gradient(circle, rgba(26,171,219,0.1), transparent 70%)',
               pointerEvents: 'none'
             }} />
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{
                 width: '80px', height: '80px', borderRadius: '16px',
-                margin: '0 auto 16px', display: 'flex', alignItems: 'center',
+                margin: '0 0 16px', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontSize: '1.875rem', fontWeight: 700, color: '#fff',
                 background: 'linear-gradient(135deg, #1AABDB, #0e8ab5)',
                 boxShadow: '0 8px 24px rgba(26,171,219,0.3)'
               }}>
                 {employee.name?.charAt(0)}
               </div>
-              <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '4px', color: 'var(--text-primary)', margin: '0 0 4px' }}>
+              <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '4px', color: 'var(--text-primary)', margin: '0 0 4px', textAlign: 'center' }}>
                 {employee.name}
               </h2>
               <button
@@ -276,7 +276,7 @@ function EmployeeProfile() {
                   fontSize: '0.875rem', fontWeight: 500, color: '#1AABDB',
                   background: 'none', border: 'none', cursor: 'pointer',
                   transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center',
-                  gap: '4px', margin: '4px auto'
+                  gap: '4px', margin: '4px 0'
                 }}>
                 {employee.empId}
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -286,7 +286,7 @@ function EmployeeProfile() {
                   }
                 </svg>
               </button>
-              <p style={{ fontSize: '0.875rem', marginBottom: '12px', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+              <p style={{ fontSize: '0.875rem', marginBottom: '12px', color: 'var(--text-secondary)', margin: '0 0 12px', textAlign: 'center' }}>
                 {employee.position}
               </p>
               {employee.department && (
