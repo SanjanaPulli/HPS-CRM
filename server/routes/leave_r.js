@@ -7,11 +7,11 @@ const {
   updateLeaveStatus,
   deleteLeave
 } = require('../controllers/leave_c')
-const { verifyAdmin } = require('../utils/auth')
+const { verifyAdmin, verifySelfOrAdmin } = require('../utils/auth')
 
-router.post('/', submitLeave)
+router.post('/', verifySelfOrAdmin, submitLeave)
 router.get('/', verifyAdmin, getAllLeaves)
-router.get('/:empId', getLeaveByEmployee)
+router.get('/:empId', verifySelfOrAdmin, getLeaveByEmployee)
 router.put('/:id', verifyAdmin, updateLeaveStatus)
 router.delete('/:id', verifyAdmin, deleteLeave)
 

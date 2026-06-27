@@ -1,6 +1,8 @@
 const prisma = require('../prismaClient')
 const { generateBarcodeId } = require('../barcodeHelper')
 const logActivity = require('../utils/activityLogger')
+const jwt = require('jsonwebtoken')
+const { JWT_SECRET } = require('../utils/auth')
 
 const getAllEmployees = async (req, res) => {
   try {
@@ -152,9 +154,16 @@ const loginEmployee = async (req, res) => {
 
     const { password: _, ...employeeData } = employee
 
+    const token = jwt.sign(
+      { id: employee.id, empId: employee.empId, role: 'employee', name: employee.name },
+      JWT_SECRET,
+      { expiresIn: '12h' }
+    )
+
     res.json({
       message: 'Login successful',
-      employee: employeeData
+      employee: employeeData,
+      token
     })
   } catch (error) {
     console.error(error)

@@ -10,11 +10,13 @@ import axios from 'axios'
 axios.interceptors.request.use(config => {
   const adminName = localStorage.getItem('adminName')
   const adminToken = localStorage.getItem('adminToken')
+  const employeeToken = localStorage.getItem('employeeToken')
+  const token = adminToken || employeeToken
   if (adminName) {
     config.headers['X-Admin-Name'] = adminName
   }
-  if (adminToken) {
-    config.headers['Authorization'] = `Bearer ${adminToken}`
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`
   }
   return config
 }, error => {
@@ -27,15 +29,17 @@ window.fetch = async (...args) => {
   let [resource, config] = args
   const adminName = localStorage.getItem('adminName')
   const adminToken = localStorage.getItem('adminToken')
-  if (adminName || adminToken) {
+  const employeeToken = localStorage.getItem('employeeToken')
+  const token = adminToken || employeeToken
+  if (adminName || token) {
     config = config || {}
     config.headers = config.headers || {}
     if (config.headers instanceof Headers) {
       if (adminName) config.headers.set('X-Admin-Name', adminName)
-      if (adminToken) config.headers.set('Authorization', `Bearer ${adminToken}`)
+      if (token) config.headers.set('Authorization', `Bearer ${token}`)
     } else {
       if (adminName) config.headers['X-Admin-Name'] = adminName
-      if (adminToken) config.headers['Authorization'] = `Bearer ${adminToken}`
+      if (token) config.headers['Authorization'] = `Bearer ${token}`
     }
   }
   return originalFetch(resource, config)

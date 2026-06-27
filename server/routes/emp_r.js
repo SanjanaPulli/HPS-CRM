@@ -17,17 +17,17 @@ const {
   resetPassword,
 } = require('../controllers/emp_c')
 
-const { verifyAdmin } = require('../utils/auth')
+const { verifyAdmin, verifySelfOrAdmin } = require('../utils/auth')
 
 router.get('/', verifyAdmin, getAllEmployees)
-router.get('/:empId', getEmployeeById)
+router.get('/:empId', verifySelfOrAdmin, getEmployeeById)
 router.post('/', verifyAdmin, createEmployee)
 router.post('/login', loginEmployee)
 router.put('/:empId', verifyAdmin, updateEmployee)
 router.delete('/:empId', verifyAdmin, deleteEmployee)
-router.patch('/:empId/workstatus', updateWorkStatus)
+router.patch('/:empId/workstatus', verifySelfOrAdmin, updateWorkStatus)
 router.patch('/:empId/leader', verifyAdmin, toggleAttendanceLeader)
-router.patch('/:empId/password', changePassword)
+router.patch('/:empId/password', verifySelfOrAdmin, changePassword)
 router.patch('/:empId/reset-password', verifyAdmin, resetPassword)
 
 

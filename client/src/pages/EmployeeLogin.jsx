@@ -25,6 +25,7 @@ export default function EmployeeLogin() {
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem("employeeAuth", JSON.stringify(data.employee));
+        localStorage.setItem("employeeToken", data.token);
         navigate("/employee/dashboard");
       } else {
         setError(data.error || data.message || "Invalid credentials");
