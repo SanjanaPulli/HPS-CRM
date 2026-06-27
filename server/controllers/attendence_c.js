@@ -406,6 +406,22 @@ const getAttendanceByEmployee = async (req, res) => {
 }
 
 
+const parseTimeStr = (timeStr) => {
+  if (!timeStr) return null
+  const clean = timeStr.trim().toLowerCase()
+  const match = clean.match(/^(\d{1,2}):(\d{2})(?:\s*(am|pm))?$/)
+  if (!match) return null
+
+  let hours = parseInt(match[1])
+  const minutes = parseInt(match[2])
+  const ampm = match[3]
+
+  if (ampm === 'pm' && hours < 12) hours += 12
+  if (ampm === 'am' && hours === 12) hours = 0
+
+  return { hours, minutes }
+}
+
 const updateAttendance = async (req, res) => {
   try {
     const { id } = req.params
@@ -419,21 +435,24 @@ const updateAttendance = async (req, res) => {
 
     const updateData = { status }
 
-    const baseDate = existing.checkInTime || existing.timestamp
+    const baseDate = existing.checkInTime || existing.timestamp || new Date()
     const offset = 5.5 * 60 * 60 * 1000
-    const localIST = new Date(baseDate.getTime() + offset)
+    const localIST = new Date(new Date(baseDate).getTime() + offset)
 
     if (checkInTimeStr !== undefined) {
       if (checkInTimeStr === '' || checkInTimeStr === null) {
         updateData.checkInTime = null
       } else {
-        const [hours, minutes] = checkInTimeStr.split(':').map(Number)
+        const parsed = parseTimeStr(checkInTimeStr)
+        if (!parsed) {
+          return res.status(400).json({ error: 'Invalid check-in time format. Use HH:MM or HH:MM AM/PM' })
+        }
         const newIST = new Date(Date.UTC(
           localIST.getUTCFullYear(),
           localIST.getUTCMonth(),
           localIST.getUTCDate(),
-          hours,
-          minutes,
+          parsed.hours,
+          parsed.minutes,
           0,
           0
         ))
@@ -445,13 +464,16 @@ const updateAttendance = async (req, res) => {
       if (checkOutTimeStr === '' || checkOutTimeStr === null) {
         updateData.checkOutTime = null
       } else {
-        const [hours, minutes] = checkOutTimeStr.split(':').map(Number)
+        const parsed = parseTimeStr(checkOutTimeStr)
+        if (!parsed) {
+          return res.status(400).json({ error: 'Invalid check-out time format. Use HH:MM or HH:MM AM/PM' })
+        }
         const newIST = new Date(Date.UTC(
           localIST.getUTCFullYear(),
           localIST.getUTCMonth(),
           localIST.getUTCDate(),
-          hours,
-          minutes,
+          parsed.hours,
+          parsed.minutes,
           0,
           0
         ))
