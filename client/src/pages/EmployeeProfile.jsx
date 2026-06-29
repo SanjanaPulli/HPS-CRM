@@ -4,6 +4,17 @@ import axios from 'axios'
 import JsBarcode from 'jsbarcode'
 import BASE_URL from '../config'
 
+const InfoField = ({ label, value }) => (
+  <div
+    style={{ padding: '12px', borderRadius: '12px', transition: 'all 0.15s', border: '1px solid transparent' }}
+    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,171,219,0.04)'; e.currentTarget.style.border = '1px solid rgba(26,171,219,0.1)' }}
+    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.border = '1px solid transparent' }}
+  >
+    <p style={{ fontSize: '0.75rem', fontWeight: 500, marginBottom: '4px', color: 'var(--text-secondary)', margin: '0 0 4px' }}>{label}</p>
+    <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{value || '—'}</p>
+  </div>
+)
+
 function EmployeeProfile() {
   const navigate = useNavigate()
   const [employee, setEmployee] = useState(null)
@@ -15,7 +26,6 @@ function EmployeeProfile() {
   const [pwError, setPwError] = useState('')
   const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false })
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  const [isLg, setIsLg] = useState(window.innerWidth >= 1024)
   const barcodeRef = useRef(null)
 
   const [documents, setDocuments] = useState([])
@@ -40,6 +50,17 @@ function EmployeeProfile() {
       setAssets(res.data)
     } catch (e) {
       console.error(e)
+    }
+  }
+
+  const fetchEmployee = async (empId) => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees/${empId}`)
+      setEmployee(res.data)
+    } catch {
+      console.error('Failed to fetch employee')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -120,22 +141,10 @@ function EmployeeProfile() {
 
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768)
-      setIsLg(window.innerWidth >= 1024)
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  const fetchEmployee = async (empId) => {
-    try {
-      const res = await axios.get(`${BASE_URL}/api/employees/${empId}`)
-      setEmployee(res.data)
-    } catch {
-      console.error('Failed to fetch employee')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [navigate])
 
   useEffect(() => {
     if (employee?.barcodeId && barcodeRef.current) {
@@ -206,17 +215,10 @@ function EmployeeProfile() {
 
   if (loading) return <div style={{ fontSize: '0.875rem', padding: '32px', color: 'var(--text-secondary)' }}>Loading...</div>
   if (!employee) return <div style={{ fontSize: '0.875rem', padding: '32px', color: 'var(--text-secondary)' }}>Employee not found.</div>
+  const cardPadding = isMobile ? '16px' : '24px'
+  const avatarSize = isMobile ? 64 : 80
 
-  const InfoField = ({ label, value }) => (
-    <div
-      style={{ padding: '12px', borderRadius: '12px', transition: 'all 0.15s', border: '1px solid transparent' }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,171,219,0.04)'; e.currentTarget.style.border = '1px solid rgba(26,171,219,0.1)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.border = '1px solid transparent' }}
-    >
-      <p style={{ fontSize: '0.75rem', fontWeight: 500, marginBottom: '4px', color: 'var(--text-secondary)', margin: '0 0 4px' }}>{label}</p>
-      <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{value || '—'}</p>
-    </div>
-  )
+
 
   return (
     <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", width: '100%', maxWidth: '1000px', margin: '0 auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -266,58 +268,137 @@ function EmployeeProfile() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
 
           {/* ID Card */}
-          <div style={{
-            borderRadius: '16px', padding: '24px', textAlign: 'center',
-            position: 'relative', overflow: 'hidden', width: '100%', maxWidth: '100%', boxSizing: 'border-box',
-            background: 'var(--card-bg)', border: '1px solid var(--card-border)'
-          }}>
-            {/* subtle bg glow */}
-            <div style={{
-              position: 'absolute', top: '-30px', right: '-30px',
-              width: '120px', height: '120px', borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(26,171,219,0.1), transparent 70%)',
-              pointerEvents: 'none'
-            }} />
-            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{
-                width: '80px', height: '80px', borderRadius: '16px',
-                margin: '0 0 16px', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontSize: '1.875rem', fontWeight: 700, color: '#fff',
-                background: 'linear-gradient(135deg, #1AABDB, #0e8ab5)',
-                boxShadow: '0 8px 24px rgba(26,171,219,0.3)'
-              }}>
+          
+          <div
+            style={{
+              borderRadius: '16px',
+              padding: cardPadding,
+              position: 'relative',
+              overflow: 'hidden',
+              background: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: '-30px',
+                right: '-30px',
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(26,171,219,0.1), transparent 70%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'row' : 'column',
+                alignItems: 'center',
+                textAlign: isMobile ? 'left' : 'center',
+                gap: '16px',
+                position: 'relative',
+              }}
+            >
+              <div
+                style={{
+                  width: `${avatarSize}px`,
+                  height: `${avatarSize}px`,
+                  borderRadius: '16px',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: isMobile ? '1.5rem' : '1.875rem',
+                  fontWeight: 700,
+                  color: '#fff',
+                  background: 'linear-gradient(135deg, #1AABDB, #0e8ab5)',
+                  boxShadow: '0 8px 24px rgba(26,171,219,0.3)',
+                }}
+              >
                 {employee.name?.charAt(0)}
               </div>
-              <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '4px', color: 'var(--text-primary)', margin: '0 0 4px', textAlign: 'center' }}>
-                {employee.name}
-              </h2>
-              <button
-                onClick={copyEmpId}
-                style={{
-                  fontSize: '0.875rem', fontWeight: 500, color: '#1AABDB',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center',
-                  gap: '4px', margin: '4px 0'
-                }}>
-                {employee.empId}
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  {copied
-                    ? <polyline points="20 6 9 17 4 12"/>
-                    : <><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></>
-                  }
-                </svg>
-              </button>
-              <p style={{ fontSize: '0.875rem', marginBottom: '12px', color: 'var(--text-secondary)', margin: '0 0 12px', textAlign: 'center' }}>
-                {employee.position}
-              </p>
-              {employee.department && (
-                <span style={{
-                  fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', borderRadius: '9999px',
-                  background: 'rgba(26,171,219,0.1)', color: '#1AABDB', border: '1px solid rgba(26,171,219,0.2)'
-                }}>
-                  {employee.department}
-                </span>
-              )}
+
+              <div style={{ flex: 1 }}>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: isMobile ? '1rem' : '1.125rem',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  {employee.name}
+                </h2>
+
+                <button
+                  onClick={copyEmpId}
+                  style={{
+                    padding: 0,
+                    margin: isMobile ? '6px 0' : '6px auto',
+                    background: 'none',
+                    border: 'none',
+                    color: '#1AABDB',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: isMobile ? 'flex-start' : 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    width: isMobile ? 'fit-content' : '100%',
+                  }}
+                >
+                  {employee.empId}
+
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    {copied ? (
+                      <polyline points="20 6 9 17 4 12" />
+                    ) : (
+                      <>
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </>
+                    )}
+                  </svg>
+                </button>
+
+                <p
+                  style={{
+                    margin: '0 0 8px',
+                    color: 'var(--text-secondary)',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  {employee.position}
+                </p>
+
+                {employee.department && (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      padding: '4px 12px',
+                      borderRadius: '9999px',
+                      background: 'rgba(26,171,219,0.1)',
+                      color: '#1AABDB',
+                      border: '1px solid rgba(26,171,219,0.2)',
+                    }}
+                  >
+                    {employee.department}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -331,7 +412,7 @@ function EmployeeProfile() {
               background: 'rgba(26,171,219,0.04)', border: '1px solid rgba(26,171,219,0.1)',
               overflow: 'hidden', width: '100%'
             }}>
-              <svg ref={barcodeRef} style={{ width: '100%', height: 'auto', maxWidth: '260px', display: 'block' }}></svg>
+              <svg ref={barcodeRef} style={{ width: '100%', maxWidth: '100%', height: 'auto', display: 'block' }}></svg>
             </div>
             <button
               onClick={downloadBarcode}
@@ -354,7 +435,7 @@ function EmployeeProfile() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
 
           {/* Personal info */}
-          <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+          <div style={{ borderRadius: '16px', padding: cardPadding, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
             <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '20px', color: 'var(--text-primary)', margin: '0 0 20px' }}>
               Personal Information
             </h3>
@@ -371,7 +452,7 @@ function EmployeeProfile() {
           </div>
 
           {/* Work info */}
-          <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+          <div style={{ borderRadius: '16px', padding: cardPadding, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
             <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '20px', color: 'var(--text-primary)', margin: '0 0 20px' }}>
               Work Information
             </h3>
@@ -384,7 +465,7 @@ function EmployeeProfile() {
           </div>
 
           {/* My Assets */}
-          <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+          <div style={{ borderRadius: '16px', padding: cardPadding, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
             <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '20px', color: 'var(--text-primary)', margin: '0 0 20px' }}>
               Assigned Company Assets
             </h3>
@@ -412,20 +493,21 @@ function EmployeeProfile() {
           </div>
 
           {/* My Documents (Vault) */}
-          <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+          <div style={{ borderRadius: '16px', padding: cardPadding, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
             <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '20px', color: 'var(--text-primary)', margin: '0 0 20px' }}>
               Document Vault
             </h3>
             
             {/* Upload form */}
             <form onSubmit={handleFileUpload} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--card-border)' }}>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px' }}>
                 <select
                   value={uploadType}
                   onChange={e => setUploadType(e.target.value)}
                   style={{
                     padding: '8px 12px', borderRadius: '10px', fontSize: '0.875rem', outline: 'none',
-                    background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)'
+                    background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)',
+                    width: isMobile ? '100%' : 'auto'
                   }}
                 >
                   <option value="Aadhaar">Aadhaar Card</option>
@@ -441,7 +523,9 @@ function EmployeeProfile() {
                   onChange={e => setUploadFile(e.target.files[0])}
                   style={{
                     flex: 1, padding: '6px', borderRadius: '10px', fontSize: '0.875rem',
-                    background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)'
+                    background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)',
+                    width: isMobile ? '100%' : 'auto',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -489,7 +573,7 @@ function EmployeeProfile() {
           {/* Daily work status */}
           {employee.dailyWorkStatus && (
             <div style={{
-              borderRadius: '16px', padding: '24px',
+              borderRadius: '16px', padding: cardPadding,
               background: 'rgba(26,171,219,0.05)', border: '1px solid rgba(26,171,219,0.15)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -503,7 +587,7 @@ function EmployeeProfile() {
           )}
 
           {/* Change Password */}
-          <div style={{ borderRadius: '16px', padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+          <div style={{ borderRadius: '16px', padding: cardPadding, background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
             <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '20px', color: 'var(--text-primary)', margin: '0 0 20px' }}>
               Change Password
             </h3>
