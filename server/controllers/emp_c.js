@@ -195,7 +195,6 @@ const updateWorkStatus = async (req, res) => {
 }
 
 
-// ✅ NEW — toggle attendance leader
 const toggleAttendanceLeader = async (req, res) => {
   try {
     const { isAttendanceLeader } = req.body

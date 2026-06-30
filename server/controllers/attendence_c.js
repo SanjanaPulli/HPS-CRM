@@ -159,7 +159,7 @@ const markAttendance = async (req, res) => {
 
     // ── CHECK-OUT ────────────────────────────────────────────────────────────
     if (existing) {
-      if (existing.checkOutTime) {
+      if (existing.checkOutTime && !isAutoCheckoutTime(existing.checkOutTime)) {
         return res.status(400).json({
           error: 'Already checked in AND out today',
           employee,
@@ -249,6 +249,17 @@ const markAttendance = async (req, res) => {
   }
 }
 
+const isAutoCheckoutTime = (dateVal) => {
+  if (!dateVal) return false
+  const d = new Date(dateVal)
+  const istMs = d.getTime() + (5.5 * 60 * 60 * 1000)
+  const istDate = new Date(istMs)
+  return istDate.getUTCHours() === 18 &&
+         istDate.getUTCMinutes() === 0 &&
+         istDate.getUTCSeconds() === 0 &&
+         istDate.getUTCMilliseconds() === 0
+}
+
 const toISTDateString = (utcDate) => {
   const istDate = new Date(utcDate.getTime() + 5.5 * 60 * 60 * 1000)
   return `${istDate.getUTCFullYear()}-${String(istDate.getUTCMonth() + 1).padStart(2, '0')}-${String(istDate.getUTCDate()).padStart(2, '0')}`
@@ -275,6 +286,8 @@ const resolveAttendanceForDate = async (date) => {
     include: { employee: true }
   })
 
+  const { standardHours } = await getOfficeSettings()
+
   return employees.map(emp => {
     const record = records.find(r => r.empId === emp.empId)
     const leave = leavesOnDate.find(l => l.empId === emp.empId)
@@ -291,15 +304,32 @@ const resolveAttendanceForDate = async (date) => {
       status = record.status
     }
 
+    let checkOutTime = record ? record.checkOutTime : null
+    let hoursWorked = record ? record.hoursWorked : null
+    let overtimeMinutes = record ? record.overtimeMinutes : null
+
+    if (record && record.checkInTime && !checkOutTime) {
+      const limit = new Date(date + 'T18:00:00+05:30')
+      const now = new Date()
+      if (now >= limit) {
+        checkOutTime = limit
+        const checkIn = new Date(record.checkInTime)
+        const diffMs = limit.getTime() - checkIn.getTime()
+        const calculatedHours = Math.max(0, diffMs / (1000 * 60 * 60))
+        hoursWorked = Math.round(calculatedHours * 100) / 100
+        overtimeMinutes = Math.round((hoursWorked - standardHours) * 60)
+      }
+    }
+
     return {
       id: record ? record.id : `temp-${emp.empId}`,
       empId: emp.empId,
       status: status,
       timestamp: record ? record.timestamp : null,
       checkInTime: record ? record.checkInTime : null,
-      checkOutTime: record ? record.checkOutTime : null,
-      hoursWorked: record ? record.hoursWorked : null,
-      overtimeMinutes: record ? record.overtimeMinutes : null,
+      checkOutTime: checkOutTime,
+      hoursWorked: hoursWorked,
+      overtimeMinutes: overtimeMinutes,
       employee: emp
     }
   })
@@ -334,6 +364,8 @@ const getAllAttendance = async (req, res) => {
       where: { status: 'Approved' }
     })
 
+    const { standardHours } = await getOfficeSettings()
+
     const resolvedRecords = allRecords.map(record => {
       const recordDate = record.checkInTime || record.timestamp
       if (!recordDate) return record
@@ -351,9 +383,29 @@ const getAllAttendance = async (req, res) => {
         }
       }
 
+      let checkOutTime = record.checkOutTime
+      let hoursWorked = record.hoursWorked
+      let overtimeMinutes = record.overtimeMinutes
+
+      if (record.checkInTime && !checkOutTime) {
+        const limit = new Date(recordDateStr + 'T18:00:00+05:30')
+        const now = new Date()
+        if (now >= limit) {
+          checkOutTime = limit
+          const checkIn = new Date(record.checkInTime)
+          const diffMs = limit.getTime() - checkIn.getTime()
+          const calculatedHours = Math.max(0, diffMs / (1000 * 60 * 60))
+          hoursWorked = Math.round(calculatedHours * 100) / 100
+          overtimeMinutes = Math.round((hoursWorked - standardHours) * 60)
+        }
+      }
+
       return {
         ...record,
-        status
+        status,
+        checkOutTime,
+        hoursWorked,
+        overtimeMinutes
       }
     })
 
@@ -375,6 +427,8 @@ const getAttendanceByEmployee = async (req, res) => {
       where: { empId: req.params.empId, status: 'Approved' }
     })
 
+    const { standardHours } = await getOfficeSettings()
+
     const resolved = records.map(record => {
       const recordDate = record.checkInTime || record.timestamp
       if (!recordDate) return record
@@ -392,9 +446,29 @@ const getAttendanceByEmployee = async (req, res) => {
         }
       }
 
+      let checkOutTime = record.checkOutTime
+      let hoursWorked = record.hoursWorked
+      let overtimeMinutes = record.overtimeMinutes
+
+      if (record.checkInTime && !checkOutTime) {
+        const limit = new Date(recordDateStr + 'T18:00:00+05:30')
+        const now = new Date()
+        if (now >= limit) {
+          checkOutTime = limit
+          const checkIn = new Date(record.checkInTime)
+          const diffMs = limit.getTime() - checkIn.getTime()
+          const calculatedHours = Math.max(0, diffMs / (1000 * 60 * 60))
+          hoursWorked = Math.round(calculatedHours * 100) / 100
+          overtimeMinutes = Math.round((hoursWorked - standardHours) * 60)
+        }
+      }
+
       return {
         ...record,
-        status
+        status,
+        checkOutTime,
+        hoursWorked,
+        overtimeMinutes
       }
     })
 

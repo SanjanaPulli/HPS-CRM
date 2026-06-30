@@ -384,7 +384,7 @@ function Attendance() {
               label: 'Check Out',
               value: record.checkInTime ? (
                 record.checkOutTime ? (
-                  <><strong>✅ {new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong></>
+                  <><strong> {new Date(record.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong></>
                 ) : (
                   '⏳ Pending'
                 )

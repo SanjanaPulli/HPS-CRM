@@ -1,13 +1,28 @@
 const cron = require('node-cron')
 const prisma = require('./prismaClient')
 
+// Returns IST midnight (00:00 IST) as a UTC Date for a given UTC Date
+const getISTDayStart = (utcDate) => {
+  const istMs = utcDate.getTime() + (5.5 * 60 * 60 * 1000)
+  const istDate = new Date(istMs)
+  const istMidnight = new Date(Date.UTC(
+    istDate.getUTCFullYear(),
+    istDate.getUTCMonth(),
+    istDate.getUTCDate(),
+    0, 0, 0, 0
+  ))
+  return new Date(istMidnight.getTime() - (5.5 * 60 * 60 * 1000))
+}
+
 const startScheduler = () => {
-   cron.schedule('0 17 * * *', async () => {
+  // End-of-day absent check at 5:00 PM IST
+  cron.schedule('0 17 * * *', async () => {
     console.log('Running end-of-day absent check...')
 
     try {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
+      const now = new Date()
+      const todayStart = getISTDayStart(now)
+      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
 
       // Get all employees
       const employees = await prisma.employee.findMany()
@@ -17,7 +32,7 @@ const startScheduler = () => {
         const existing = await prisma.attendance.findFirst({
           where: {
             empId: employee.empId,
-            timestamp: { gte: today }
+            checkInTime: { gte: todayStart, lt: todayEnd }
           }
         })
 
@@ -27,7 +42,7 @@ const startScheduler = () => {
             where: {
               empId: employee.empId,
               status: 'Approved',
-              date: { gte: today }
+              date: { gte: todayStart, lt: todayEnd }
             }
           })
 
@@ -35,7 +50,10 @@ const startScheduler = () => {
           await prisma.attendance.create({
             data: {
               empId: employee.empId,
-              status: onLeave ? 'On Leave' : 'Absent'
+              status: onLeave ? 'On Leave' : 'Absent',
+              checkInTime: null,
+              checkOutTime: null,
+              timestamp: todayStart
             }
           })
 
@@ -47,20 +65,23 @@ const startScheduler = () => {
     } catch (error) {
       console.error('Scheduler error:', error)
     }
+  }, {
+    scheduled: true,
+    timezone: 'Asia/Kolkata'
   })
 
   // Auto check-out at 6:00 PM (18:00) IST
   cron.schedule('0 18 * * *', async () => {
     console.log('Running auto check-out at 6:00 PM...')
     try {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
+      const now = new Date()
+      const todayStart = getISTDayStart(now)
+      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
 
       // Find all check-ins for today that do not have a check-out time
       const records = await prisma.attendance.findMany({
         where: {
-          timestamp: { gte: today },
-          checkInTime: { not: null },
+          checkInTime: { gte: todayStart, lt: todayEnd },
           checkOutTime: null
         }
       })
@@ -75,12 +96,12 @@ const startScheduler = () => {
       const [oh, om] = checkOutTimeStr.split(':').map(Number)
       const standardHours = ((oh * 60 + om) - (ih * 60 + im)) / 60
 
-      const autoCheckOutTime = new Date()
-      autoCheckOutTime.setHours(18, 0, 0, 0) // 6:00 PM local time
+      // autoCheckOutTime is exactly 6:00 PM (18:00:00) IST today
+      const autoCheckOutTime = new Date(todayStart.getTime() + 18 * 60 * 60 * 1000)
 
       for (const record of records) {
         const checkIn = new Date(record.checkInTime)
-        const diffMs = autoCheckOutTime - checkIn
+        const diffMs = autoCheckOutTime.getTime() - checkIn.getTime()
         const hoursWorked = Math.max(0, diffMs / (1000 * 60 * 60))
         const overtimeMinutes = Math.round((hoursWorked - standardHours) * 60)
 
@@ -88,7 +109,7 @@ const startScheduler = () => {
           where: { id: record.id },
           data: {
             checkOutTime: autoCheckOutTime,
-            hoursWorked,
+            hoursWorked: Math.round(hoursWorked * 100) / 100,
             overtimeMinutes
           }
         })
@@ -98,9 +119,12 @@ const startScheduler = () => {
     } catch (error) {
       console.error('Auto check-out scheduler error:', error)
     }
+  }, {
+    scheduled: true,
+    timezone: 'Asia/Kolkata'
   })
 
-  console.log('Scheduler started — runs daily at 5:00 PM and 6:00 PM')
+  console.log('Scheduler started — runs daily at 5:00 PM and 6:00 PM IST')
 }
 
 module.exports = startScheduler

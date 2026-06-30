@@ -157,7 +157,7 @@ const seedAdmins = async () => {
           { username: 'manager', password: managerPass, name: 'Manager', role: 'manager' }
         ]
       })
-      console.log('✅ Admin & Manager accounts seeded successfully in DB.')
+      console.log('Admin & Manager accounts seeded successfully in DB.')
     }
   } catch (err) {
     console.error('Failed to seed admins:', err)

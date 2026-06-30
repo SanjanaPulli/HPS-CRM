@@ -10,7 +10,7 @@ function TeamScan() {
 
     const emp = JSON.parse(stored)
 
-    // ✅ Use isAttendanceLeader instead of hardcoded positions
+    // Use isAttendanceLeader instead of hardcoded positions
     if (!emp.isAttendanceLeader) {
       navigate('/employee/dashboard')
       return

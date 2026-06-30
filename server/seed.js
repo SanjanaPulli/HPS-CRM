@@ -40,7 +40,7 @@ async function main() {
       },
     })
 
-    console.log(`✅ ${result.empId} — ${result.name} (${result.position}) | Barcode: ${barcodeId}`)
+    console.log(` ${result.empId} — ${result.name} (${result.position}) | Barcode: ${barcodeId}`)
   }
 
   console.log('\n🎉 Done! All employees seeded.')
