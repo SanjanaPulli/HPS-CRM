@@ -519,6 +519,12 @@ const updateAttendance = async (req, res) => {
       baseDate = existing.checkInTime || existing.timestamp || new Date()
     }
 
+    const recordISTStr = toISTDateString(new Date(baseDate))
+    const todayISTStr = toISTDateString(new Date())
+    if (recordISTStr > todayISTStr) {
+      return res.status(400).json({ error: 'Cannot edit attendance for future dates' })
+    }
+
     const updateData = { status }
 
     const offset = 5.5 * 60 * 60 * 1000
@@ -636,6 +642,13 @@ const deleteAttendance = async (req, res) => {
       include: { employee: true }
     })
     if (!existing) return res.status(404).json({ error: 'Attendance record not found' })
+
+    const baseDate = existing.checkInTime || existing.timestamp || new Date()
+    const recordISTStr = toISTDateString(new Date(baseDate))
+    const todayISTStr = toISTDateString(new Date())
+    if (recordISTStr > todayISTStr) {
+      return res.status(400).json({ error: 'Cannot delete attendance for future dates' })
+    }
 
     await prisma.attendance.delete({
       where: { id: parseInt(id) }

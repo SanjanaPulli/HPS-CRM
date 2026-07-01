@@ -90,6 +90,7 @@ function Attendance() {
   }
 
   const openEditModal = (record) => {
+    if (selectedDate > todayStr()) return
     setEditingRecord(record)
     setEditForm({
       status: record.status,
@@ -151,6 +152,7 @@ function Attendance() {
   const handleSaveEdit = async (e) => {
     e.preventDefault()
     if (!editingRecord) return
+    if (selectedDate > todayStr()) return
     setSavingEdit(true)
     try {
       const payload = {
@@ -173,6 +175,7 @@ function Attendance() {
 
   const handleDeleteRecord = async () => {
     if (!editingRecord) return
+    if (selectedDate > todayStr()) return
     if (!window.confirm(`Are you sure you want to delete this attendance record for ${editingRecord.employee.name}?`)) return
     setDeletingRecord(true)
     try {
@@ -430,18 +433,20 @@ function Attendance() {
             }}>
             {isLeader ? '★ Leader' : '☆ Set Leader'}
           </button>
-          <button
-            onClick={() => openEditModal(record)}
-            style={{
-              flex: 1, fontSize: 12, fontWeight: 600, padding: '8px 0', borderRadius: 12,
-              cursor: 'pointer', transition: 'all 0.15s',
-              background: 'rgba(26,171,219,0.08)', color: '#1AABDB',
-              border: '1px solid rgba(26,171,219,0.2)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4
-            }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit
-          </button>
+          {selectedDate <= todayStr() && (
+            <button
+              onClick={() => openEditModal(record)}
+              style={{
+                flex: 1, fontSize: 12, fontWeight: 600, padding: '8px 0', borderRadius: 12,
+                cursor: 'pointer', transition: 'all 0.15s',
+                background: 'rgba(26,171,219,0.08)', color: '#1AABDB',
+                border: '1px solid rgba(26,171,219,0.2)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4
+              }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit
+            </button>
+          )}
         </div>
       </div>
     )
@@ -558,18 +563,20 @@ function Attendance() {
               }}>
               {isLeader ? '★ Leader' : '☆ Set Leader'}
             </button>
-            <button
-              onClick={() => openEditModal(record)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 12,
-                cursor: 'pointer', transition: 'all 0.15s',
-                background: 'rgba(26,171,219,0.08)', color: '#1AABDB',
-                border: '1px solid rgba(26,171,219,0.2)',
-              }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Edit
-            </button>
+            {selectedDate <= todayStr() && (
+              <button
+                onClick={() => openEditModal(record)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 12,
+                  cursor: 'pointer', transition: 'all 0.15s',
+                  background: 'rgba(26,171,219,0.08)', color: '#1AABDB',
+                  border: '1px solid rgba(26,171,219,0.2)',
+                }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+              </button>
+            )}
           </div>
         </td>
       </tr>
