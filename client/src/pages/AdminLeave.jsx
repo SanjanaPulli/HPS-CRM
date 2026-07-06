@@ -8,10 +8,10 @@ function formatDateIN(dateStr) {
 }
 
 function getDayCount(fromDate, toDate, isHalfDay) {
-  if (isHalfDay) return '0.5'
-  if (!fromDate || !toDate) return '1'
+  if (!fromDate || !toDate) return isHalfDay ? '0.5' : '1'
   const days = Math.floor((new Date(toDate) - new Date(fromDate)) / (1000 * 60 * 60 * 24)) + 1
-  return days > 0 ? String(days) : '1'
+  const count = days > 0 ? days : 1
+  return isHalfDay ? String(count * 0.5) : String(count)
 }
 
 function calcHours(fromTime, toTime) {

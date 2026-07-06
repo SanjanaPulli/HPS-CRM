@@ -42,7 +42,19 @@ const startScheduler = () => {
             where: {
               empId: employee.empId,
               status: 'Approved',
-              date: { gte: todayStart, lt: todayEnd }
+              type: 'Leave',
+              OR: [
+                {
+                  fromDate: { lt: todayEnd },
+                  toDate: { gte: todayStart }
+                },
+                {
+                  date: {
+                    gte: todayStart,
+                    lt: todayEnd
+                  }
+                }
+              ]
             }
           })
 

@@ -44,13 +44,16 @@ const submitLeave = async (req, res) => {
       const diffDays = Math.floor((new Date(endDate) - new Date(primaryDate)) / (1000 * 60 * 60 * 24)) + 1
       dayLabel = `${diffDays} day${diffDays !== 1 ? 's' : ''} on duty`
     } else {
-      const diffDays = isHalfDay
-        ? 0.5
-        : Math.floor((new Date(endDate) - new Date(primaryDate)) / (1000 * 60 * 60 * 24)) + 1
-      dayLabel = isHalfDay
-        ? `0.5 day (${halfDaySession} session)`
-        : `${diffDays} day${diffDays !== 1 ? 's' : ''}`  
-   }
+      const rawDays = Math.floor((new Date(endDate) - new Date(primaryDate)) / (1000 * 60 * 60 * 24)) + 1
+      const diffDays = isHalfDay ? (rawDays * 0.5) : rawDays
+      if (isHalfDay) {
+        dayLabel = rawDays === 1
+          ? `0.5 day (${halfDaySession} session)`
+          : `${diffDays} days (${rawDays} half days, ${halfDaySession} session)`
+      } else {
+        dayLabel = `${diffDays} day${diffDays !== 1 ? 's' : ''}`
+      }
+    }
     try {
       await prisma.notification.create({
         data: {
@@ -128,12 +131,11 @@ const updateLeaveStatus = async (req, res) => {
 
     const employee = await prisma.employee.findUnique({ where: { empId: leave.empId } })
 
-    const diffDays = leave.isHalfDay
-      ? 0.5
-      : Math.floor(
-          (new Date(leave.toDate || leave.date) - new Date(leave.fromDate || leave.date))
-          / (1000 * 60 * 60 * 24)
-        ) + 1
+    const rawDays = Math.floor(
+      (new Date(leave.toDate || leave.date) - new Date(leave.fromDate || leave.date))
+      / (1000 * 60 * 60 * 24)
+    ) + 1
+    const diffDays = leave.isHalfDay ? (rawDays * 0.5) : rawDays
 
     // Log against the employee being actioned, but mention admin in details
     await logActivity({
@@ -141,7 +143,7 @@ const updateLeaveStatus = async (req, res) => {
       employeeName: employee?.name,
       action:       status === 'Approved' ? 'Leave Approved' : 'Leave Rejected',
       category:     'LEAVE',
-      details: `${leave.type} — ${leave.isHalfDay ? '0.5 day' : `${diffDays} day(s)`} | ${leave.reason} | Actioned by: ${adminName}`
+      details: `${leave.type} — ${leave.isHalfDay ? `${diffDays} day(s) (${rawDays} half day(s))` : `${diffDays} day(s)`} | ${leave.reason} | Actioned by: ${adminName}`
     })
 
     // Also log against admin so it shows in their activity trail
@@ -150,7 +152,7 @@ const updateLeaveStatus = async (req, res) => {
       employeeName: adminName,
       action:       `${status === 'Approved' ? 'Approved' : 'Rejected'} Leave`,
       category:     'LEAVE',
-      details:      `${employee?.name}'s ${leave.type} request (${leave.isHalfDay ? '0.5 day' : `${diffDays} day(s)`})`
+      details:      `${employee?.name}'s ${leave.type} request (${leave.isHalfDay ? `${diffDays} day(s) (${rawDays} half day(s))` : `${diffDays} day(s)`})`
     })
 
     await prisma.notification.create({

@@ -137,10 +137,10 @@ function resolveType(leave) {
 }
 
 function getDayCount(from, to, isHalfDay) {
-  if (isHalfDay) return 0.5
-  if (!from || !to) return 1
+  if (!from || !to) return isHalfDay ? 0.5 : 1
   const days = Math.floor((new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24)) + 1
-  return days > 0 ? days : 1
+  const count = days > 0 ? days : 1
+  return isHalfDay ? count * 0.5 : count
 }
 
 function formatDateIN(dateStr) {
@@ -289,11 +289,6 @@ function EmployeeLeave() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  useEffect(() => {
-    if (form.isHalfDay && form.fromDate) {
-      setForm(p => ({ ...p, toDate: p.fromDate }))
-    }
-  }, [form.isHalfDay, form.fromDate])
 
   useEffect(() => {
     setForm({ fromDate: '', toDate: '', reason: '', isHalfDay: false, halfDaySession: 'Morning', fromTime: '', toTime: '' })
@@ -364,7 +359,7 @@ function EmployeeLeave() {
         ? `permission (${form.fromTime}–${form.toTime})`
         : requestType === 'On Duty'
           ? (form.fromTime && form.toTime ? `on duty (${form.fromTime}–${form.toTime})` : 'on duty')
-          : form.isHalfDay ? '0.5 day' : `${getDayCount(form.fromDate, form.toDate, false)} day(s)`
+          : `${getDayCount(form.fromDate, form.toDate, form.isHalfDay)} day(s)${form.isHalfDay ? ` (${form.halfDaySession} session)` : ''}`
 
       setSuccess(`${requestType} request for ${label} submitted! Waiting for admin approval.`)
       setForm({ fromDate: '', toDate: '', reason: '', isHalfDay: false, halfDaySession: 'Morning', fromTime: '', toTime: '' })
@@ -580,7 +575,7 @@ function EmployeeLeave() {
                         value={form.fromDate}
                         onChange={e => setForm(p => ({
                           ...p, fromDate: e.target.value,
-                          toDate: p.isHalfDay ? e.target.value : (p.toDate < e.target.value ? e.target.value : p.toDate)
+                          toDate: (!p.toDate || p.toDate < e.target.value) ? e.target.value : p.toDate
                         }))}
                         style={inputStyle}
                         onFocus={e => e.target.style.border = '1px solid #1AABDB'}
@@ -589,15 +584,14 @@ function EmployeeLeave() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
-                        To Date{form.isHalfDay && <span style={{ color: '#1AABDB' }}> (same as from — half day)</span>}
+                        To Date
                       </label>
                       <input type="date" required
                         min={form.fromDate || today}
                         value={form.toDate}
-                        disabled={form.isHalfDay}
                         onChange={e => setForm(p => ({ ...p, toDate: e.target.value }))}
-                        style={{ ...inputStyle, opacity: form.isHalfDay ? 0.5 : 1, cursor: form.isHalfDay ? 'not-allowed' : 'auto' }}
-                        onFocus={e => { if (!form.isHalfDay) e.target.style.border = '1px solid #1AABDB' }}
+                        style={inputStyle}
+                        onFocus={e => e.target.style.border = '1px solid #1AABDB'}
                         onBlur={e => e.target.style.border = '1px solid var(--card-border)'}
                       />
                     </div>
@@ -826,6 +820,7 @@ function EmployeeLeave() {
                               ) : !isPermRecord && fromDate !== toDate ? (
                                 <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>
                                   to {formatDateIN(toDate)} · <span style={{ color: '#1AABDB', fontWeight: 600 }}>{days}d</span>
+                                  {leave.isHalfDay && ` (${leave.halfDaySession})`}
                                 </p>
                               ) : (
                                 <p style={{ fontSize: 12, margin: 0, color: 'var(--text-muted)' }}>
@@ -896,6 +891,7 @@ function EmployeeLeave() {
                             ) : !isPermRecord && fromDate !== toDate ? (
                               <p style={{ fontSize: 12, margin: 0, color: 'var(--text-secondary)' }}>
                                 to {formatDateIN(toDate)} · <span style={{ color: '#1AABDB', fontWeight: 600 }}>{days}d</span>
+                                {leave.isHalfDay && ` (${leave.halfDaySession})`}
                               </p>
                             ) : (
                               <p style={{ fontSize: 12, margin: 0, color: 'var(--text-secondary)' }}>

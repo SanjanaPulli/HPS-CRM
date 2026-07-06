@@ -139,10 +139,20 @@ const markAttendance = async (req, res) => {
       where: {
         empId,
         status: 'Approved',
-        date: {
-          gte: todayStart,
-          lte: todayEnd
-        }
+        type: 'Leave',
+        isHalfDay: false,
+        OR: [
+          {
+            fromDate: { lte: todayEnd },
+            toDate: { gte: todayStart }
+          },
+          {
+            date: {
+              gte: todayStart,
+              lte: todayEnd
+            }
+          }
+        ]
       }
     })
     if (onLeave) {
