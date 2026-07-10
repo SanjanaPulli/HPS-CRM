@@ -110,7 +110,7 @@ app.post('/api/admin/login', async (req, res) => {
 // PATCH /api/admin/password
 app.patch('/api/admin/password', async (req, res) => {
   const { currentPassword, newPassword, username } = req.body
-  const targetUsername = (username || 'admin').toLowerCase().trim()
+  const targetUsername = (username || 'satheesh').toLowerCase().trim()
 
   try {
     const user = await prisma.admin.findUnique({
@@ -147,18 +147,31 @@ app.patch('/api/admin/password', async (req, res) => {
 
 const seedAdmins = async () => {
   try {
-    const count = await prisma.admin.count()
-    if (count === 0) {
-      const adminPass = await bcrypt.hash('admin123', 10)
-      const managerPass = await bcrypt.hash('manager123', 10)
-      await prisma.admin.createMany({
-        data: [
-          { username: 'admin', password: adminPass, name: 'Admin', role: 'admin' },
-          { username: 'manager', password: managerPass, name: 'Manager', role: 'manager' }
-        ]
-      })
-      console.log('Admin & Manager accounts seeded successfully in DB.')
-    }
+    const adminPass = await bcrypt.hash('9246615251', 10)
+    const managerPass = await bcrypt.hash('6301890502', 10)
+
+    await prisma.admin.upsert({
+      where: { username: 'satheesh' },
+      update: { password: adminPass, name: 'Satheesh', role: 'admin' },
+      create: { username: 'satheesh', password: adminPass, name: 'Satheesh', role: 'admin' }
+    })
+
+    await prisma.admin.upsert({
+      where: { username: 'sowsheel' },
+      update: { password: managerPass, name: 'Sowsheel', role: 'manager' },
+      create: { username: 'sowsheel', password: managerPass, name: 'Sowsheel', role: 'manager' }
+    })
+
+    // Clean up old default admins
+    await prisma.admin.deleteMany({
+      where: {
+        username: {
+          in: ['admin', 'manager']
+        }
+      }
+    })
+
+    console.log('Admin & Manager accounts seeded/updated successfully in DB.')
   } catch (err) {
     console.error('Failed to seed admins:', err)
   }
