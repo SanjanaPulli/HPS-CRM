@@ -41,7 +41,7 @@ function Employees() {
   const [resetSuccess, setResetSuccess] = useState('')
   const [search, setSearch]             = useState('')
   const [deptFilter, setDeptFilter]     = useState('All')
-  const [sortBy, setSortBy]             = useState('name')
+  const [sortBy, setSortBy]             = useState('id')
   const [expandedId, setExpandedId]     = useState(null)
   const [isMobile, setIsMobile]         = useState(window.innerWidth < 768)
   const barcodeRefs = useRef({})
@@ -260,7 +260,16 @@ function Employees() {
       )
     )
     .sort((a, b) => {
-      if (sortBy === 'name')    return (a.name || '').localeCompare(b.name || '')
+      if (sortBy === 'id') {
+        const valA = String(a.empId || '').slice(-2)
+        const valB = String(b.empId || '').slice(-2)
+        const numA = parseInt(valA, 10)
+        const numB = parseInt(valB, 10)
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB
+        }
+        return valA.localeCompare(valB)
+      }
       if (sortBy === 'dept')    return (a.department || '').localeCompare(b.department || '')
       if (sortBy === 'joining') return new Date(b.joiningDate || 0) - new Date(a.joiningDate || 0)
       return 0
@@ -339,7 +348,7 @@ function Employees() {
         <div style={selectWrap}>
           <select value={sortBy} onChange={e => setSortBy(e.target.value)}
             style={{ ...inputStyle, paddingRight: 32, appearance: 'none', cursor: 'pointer', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
-            <option value="name">Sort: Name A–Z</option>
+            <option value="id">Sort: ID (Last 2 digits)</option>
             <option value="dept">Sort: Department</option>
             <option value="joining">Sort: Latest Joining</option>
           </select>
