@@ -387,7 +387,10 @@ const getAllAttendance = async (req, res) => {
 
     const allRecords = await prisma.attendance.findMany({
       include: { employee: true },
-      orderBy: { checkInTime: 'desc' }
+      orderBy: [
+        { timestamp: 'desc' },
+        { checkInTime: 'desc' }
+      ]
     })
 
     const leaves = await prisma.leaveRequest.findMany({
@@ -450,7 +453,10 @@ const getAttendanceByEmployee = async (req, res) => {
   try {
     const records = await prisma.attendance.findMany({
       where:   { empId: req.params.empId },
-      orderBy: { checkInTime: 'desc' }
+      orderBy: [
+        { timestamp: 'desc' },
+        { checkInTime: 'desc' }
+      ]
     })
 
     const leaves = await prisma.leaveRequest.findMany({
