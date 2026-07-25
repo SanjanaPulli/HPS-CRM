@@ -105,7 +105,11 @@ function Attendance() {
     setEditForm(prev => {
       const updated = { ...prev, [type]: value }
       const calc = calculateHoursAndOT(updated.checkInTimeStr, updated.checkOutTimeStr)
-      return { ...updated, hoursWorked: calc.hours, overtimeMinutes: calc.ot }
+      let status = updated.status
+      if (type === 'checkInTimeStr' && value && status === 'Absent') {
+        status = 'Present'
+      }
+      return { ...updated, status, hoursWorked: calc.hours, overtimeMinutes: calc.ot }
     })
   }
 

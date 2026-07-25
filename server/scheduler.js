@@ -14,30 +14,156 @@ const getISTDayStart = (utcDate) => {
   return new Date(istMidnight.getTime() - (5.5 * 60 * 60 * 1000))
 }
 
-const startScheduler = () => {
-  // End-of-day absent check at 5:00 PM IST
-  cron.schedule('0 17 * * *', async () => {
-    console.log('Running end-of-day absent check...')
+const performAbsentCheck = async (now) => {
+  const todayStart = getISTDayStart(now)
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
 
-    try {
-      const now = new Date()
-      const todayStart = getISTDayStart(now)
-      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+  // 1. Fetch office settings and check if today is a weekend
+  const settings = await prisma.officeSetting.findFirst()
+  const workingDaysStr = settings?.workingDays || 'Mon,Tue,Wed,Thu,Fri,Sat'
+  
+  const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+  const workingDayNums = workingDaysStr.split(',').map(d => dayMap[d.trim()]).filter(v => v !== undefined)
+  
+  const istMs = now.getTime() + (5.5 * 60 * 60 * 1000)
+  const istDate = new Date(istMs)
+  const dayOfWeek = istDate.getUTCDay()
+  
+  if (!workingDayNums.includes(dayOfWeek)) {
+    console.log(`Skipping absent check: day is a weekend (${istDate.toUTCString()})`)
+    return
+  }
 
-      // Get all employees
+  // 2. Check if today is a holiday
+  const holiday = await prisma.holiday.findFirst({
+    where: {
+      date: {
+        gte: todayStart,
+        lt: todayEnd
+      }
+    }
+  })
+  if (holiday) {
+    console.log(`Skipping absent check: today is a holiday - ${holiday.name} (${istDate.toUTCString()})`)
+    return
+  }
+
+  // 3. Process all employees
+  const employees = await prisma.employee.findMany()
+
+  for (const employee of employees) {
+    // Check if employee already has attendance record for today (either check-in or timestamp)
+    const existing = await prisma.attendance.findFirst({
+      where: {
+        empId: employee.empId,
+        OR: [
+          { checkInTime: { gte: todayStart, lt: todayEnd } },
+          { timestamp: { gte: todayStart, lt: todayEnd } }
+        ]
+      }
+    })
+
+    if (!existing) {
+      // Check if on approved leave today
+      const onLeave = await prisma.leaveRequest.findFirst({
+        where: {
+          empId: employee.empId,
+          status: 'Approved',
+          type: 'Leave',
+          OR: [
+            {
+              fromDate: { lt: todayEnd },
+              toDate: { gte: todayStart }
+            },
+            {
+              date: {
+                gte: todayStart,
+                lt: todayEnd
+              }
+            }
+          ]
+        }
+      })
+
+      // Mark as absent or on leave
+      await prisma.attendance.create({
+        data: {
+          empId: employee.empId,
+          status: onLeave ? 'On Leave' : 'Absent',
+          checkInTime: null,
+          checkOutTime: null,
+          timestamp: todayStart
+        }
+      })
+
+      console.log(`Marked ${employee.empId} as ${onLeave ? 'On Leave' : 'Absent'}`)
+    }
+  }
+}
+
+const backfillAbsentRecords = async () => {
+  console.log('Running startup backfill for past finished days...')
+  try {
+    const oldestEmp = await prisma.employee.findFirst({ orderBy: { createdAt: 'asc' } })
+    if (!oldestEmp) {
+      console.log('No employees found, skipping backfill.')
+      return
+    }
+
+    const settings = await prisma.officeSetting.findFirst()
+    const workingDaysStr = settings?.workingDays || 'Mon,Tue,Wed,Thu,Fri,Sat'
+    const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    const workingDayNums = workingDaysStr.split(',').map(d => dayMap[d.trim()]).filter(v => v !== undefined)
+
+    const start = getISTDayStart(new Date(oldestEmp.createdAt))
+    const now = new Date()
+    const todayStart = getISTDayStart(now)
+
+    let current = new Date(start.getTime())
+    let count = 0
+
+    while (current < todayStart) {
+      const dayStart = new Date(current.getTime())
+      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
+
+      const istMs = dayStart.getTime() + (5.5 * 60 * 60 * 1000)
+      const istDate = new Date(istMs)
+      const dayOfWeek = istDate.getUTCDay()
+
+      if (!workingDayNums.includes(dayOfWeek)) {
+        current.setTime(current.getTime() + 24 * 60 * 60 * 1000)
+        continue
+      }
+
+      // Check holiday
+      const holiday = await prisma.holiday.findFirst({
+        where: {
+          date: { gte: dayStart, lt: dayEnd }
+        }
+      })
+      if (holiday) {
+        current.setTime(current.getTime() + 24 * 60 * 60 * 1000)
+        continue
+      }
+
       const employees = await prisma.employee.findMany()
-
       for (const employee of employees) {
-        // Check if already has attendance today
+        if (new Date(employee.createdAt) > dayEnd) {
+          continue
+        }
+
         const existing = await prisma.attendance.findFirst({
           where: {
             empId: employee.empId,
-            checkInTime: { gte: todayStart, lt: todayEnd }
+            OR: [
+              { checkInTime: { gte: dayStart, lt: dayEnd } },
+              { timestamp: { gte: dayStart, lt: dayEnd } }
+            ]
           }
         })
 
         if (!existing) {
-          // Check if on approved leave today
+          // Check approved leave
           const onLeave = await prisma.leaveRequest.findFirst({
             where: {
               empId: employee.empId,
@@ -45,34 +171,48 @@ const startScheduler = () => {
               type: 'Leave',
               OR: [
                 {
-                  fromDate: { lt: todayEnd },
-                  toDate: { gte: todayStart }
+                  fromDate: { lt: dayEnd },
+                  toDate: { gte: dayStart }
                 },
                 {
-                  date: {
-                    gte: todayStart,
-                    lt: todayEnd
-                  }
+                  date: { gte: dayStart, lt: dayEnd }
                 }
               ]
             }
           })
 
-          // Mark as absent or on leave
           await prisma.attendance.create({
             data: {
               empId: employee.empId,
               status: onLeave ? 'On Leave' : 'Absent',
               checkInTime: null,
               checkOutTime: null,
-              timestamp: todayStart
+              timestamp: dayStart
             }
           })
-
-          console.log(`Marked ${employee.empId} as ${onLeave ? 'On Leave' : 'Absent'}`)
+          count++
         }
       }
 
+      current.setTime(current.getTime() + 24 * 60 * 60 * 1000)
+    }
+
+    if (count > 0) {
+      console.log(`Startup backfill completed! Created ${count} absent/on-leave records.`)
+    } else {
+      console.log('Startup backfill completed! No records needed backfilling.')
+    }
+  } catch (error) {
+    console.error('Error during startup backfill:', error)
+  }
+}
+
+const startScheduler = () => {
+  // End-of-day absent check at 11:59 PM IST
+  cron.schedule('59 23 * * *', async () => {
+    console.log('Running end-of-day absent check...')
+    try {
+      await performAbsentCheck(new Date())
       console.log('End-of-day check complete!')
     } catch (error) {
       console.error('Scheduler error:', error)
@@ -136,7 +276,12 @@ const startScheduler = () => {
     timezone: 'Asia/Kolkata'
   })
 
-  console.log('Scheduler started — runs daily at 5:00 PM and 6:00 PM IST')
+  console.log('Scheduler started — runs daily at 6:00 PM (auto check-out) and 11:59 PM (absent check) IST')
+
+  // Run startup backfill asynchronously so it doesn't block startup
+  backfillAbsentRecords()
 }
 
+startScheduler.performAbsentCheck = performAbsentCheck
+startScheduler.getISTDayStart = getISTDayStart
 module.exports = startScheduler

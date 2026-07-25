@@ -26,6 +26,56 @@ export default function ScannerTerminal() {
   const navigate = useNavigate()
 
   const [settings, setSettings] = useState(null)
+  const [eligibleEmps, setEligibleEmps] = useState([])
+  const [selectedEmpIds, setSelectedEmpIds] = useState([])
+  const [loadingEligible, setLoadingEligible] = useState(false)
+  const [bulkStatus, setBulkStatus] = useState('')
+
+  const fetchEligibleEmployees = async () => {
+    const token = from === 'admin' 
+      ? localStorage.getItem('adminToken') 
+      : localStorage.getItem('employeeToken')
+    if (!token) return
+
+    setLoadingEligible(true)
+    try {
+      const res = await axios.get(`${BASE_URL}/api/attendance/eligible-today`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setEligibleEmps(res.data)
+      setSelectedEmpIds(res.data.map(e => e.empId))
+    } catch (err) {
+      console.error('Failed to load eligible employees', err)
+    } finally {
+      setLoadingEligible(false)
+    }
+  }
+
+  const handleBulkMarkPresent = async () => {
+    if (selectedEmpIds.length === 0) return
+    const token = from === 'admin' 
+      ? localStorage.getItem('adminToken') 
+      : localStorage.getItem('employeeToken')
+    if (!token) return
+
+    setBulkStatus('marking')
+    try {
+      const res = await axios.post(`${BASE_URL}/api/attendance/mark-all-present`, {
+        empIds: selectedEmpIds
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      alert(res.data.message || 'Successfully marked present')
+      await fetchEligibleEmployees()
+      reset()
+    } catch (err) {
+      const errMsg = err.response?.data?.error || 'Failed to mark present.'
+      alert(errMsg)
+    } finally {
+      setBulkStatus('')
+    }
+  }
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -36,8 +86,9 @@ export default function ScannerTerminal() {
     axios.get(`${BASE_URL}/api/settings`)
       .then(res => setSettings(res.data))
       .catch(e => console.error('Failed to load settings', e))
+    fetchEligibleEmployees()
     return () => { stopScanner() }
-  }, [])
+  }, [from])
 
   const formatTimeStr = (str) => {
     if (!str) return ''
@@ -153,9 +204,11 @@ export default function ScannerTerminal() {
       } else if (attendance?.status === 'Late') {
         setStatus(STATUS_LATE)
         setMessage(`Checked in — Late (after ${formatTimeStr(lateAfterStr)})`)
+        fetchEligibleEmployees()
       } else {
         setStatus(STATUS_SUCCESS)
         setMessage('Checked in successfully')
+        fetchEligibleEmployees()
       }
     } catch (err) {
       const errMsg = err.response?.data?.error || 'Failed to mark attendance. Try again.'
@@ -421,6 +474,106 @@ export default function ScannerTerminal() {
             )}
 
           </div>
+
+          {status === STATUS_IDLE && !scanning && (
+            <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff', margin: 0 }}>
+                  Eligible for Check-In Today
+                </h3>
+                {eligibleEmps.length > 0 && (
+                  <button
+                    onClick={() => {
+                      if (selectedEmpIds.length === eligibleEmps.length) {
+                        setSelectedEmpIds([])
+                      } else {
+                        setSelectedEmpIds(eligibleEmps.map(e => e.empId))
+                      }
+                    }}
+                    style={{
+                      background: 'none', border: 'none', color: '#1AABDB', fontSize: '0.75rem',
+                      fontWeight: 500, cursor: 'pointer', padding: 0
+                    }}
+                  >
+                    {selectedEmpIds.length === eligibleEmps.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                )}
+              </div>
+
+              {loadingEligible ? (
+                <p style={{ color: '#64748B', fontSize: '0.8rem', margin: '8px 0', textAlign: 'center' }}>Loading employees...</p>
+              ) : eligibleEmps.length === 0 ? (
+                <p style={{ color: '#64748B', fontSize: '0.8rem', margin: '8px 0', textAlign: 'center' }}>
+                  No employees eligible to mark present today.
+                </p>
+              ) : (
+                <>
+                  <div style={{
+                    maxHeight: '160px', overflowY: 'auto', borderRadius: '12px',
+                    background: '#0D1117', border: '1px solid rgba(255,255,255,0.05)',
+                    padding: '8px', marginBottom: '16px'
+                  }}>
+                    {eligibleEmps.map(emp => {
+                      const isChecked = selectedEmpIds.includes(emp.empId)
+                      return (
+                        <label
+                          key={emp.empId}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px',
+                            borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s',
+                            color: isChecked ? '#fff' : '#64748B',
+                            background: isChecked ? 'rgba(26,171,219,0.04)' : 'transparent',
+                            marginBottom: '2px'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                          onMouseLeave={e => e.currentTarget.style.background = isChecked ? 'rgba(26,171,219,0.04)' : 'transparent'}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setSelectedEmpIds(prev =>
+                                prev.includes(emp.empId)
+                                  ? prev.filter(id => id !== emp.empId)
+                                  : [...prev, emp.empId]
+                              )
+                            }}
+                            style={{
+                              accentColor: '#1AABDB', width: '15px', height: '15px', cursor: 'pointer'
+                            }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{emp.name}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#475569' }}>
+                              {emp.empId} • {emp.position || 'Employee'}
+                            </div>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+
+                  <button
+                    onClick={handleBulkMarkPresent}
+                    disabled={selectedEmpIds.length === 0 || bulkStatus === 'marking'}
+                    style={{
+                      width: '100%', padding: '12px', borderRadius: '14px',
+                      fontSize: '0.8rem', fontWeight: 600, color: '#fff',
+                      background: selectedEmpIds.length === 0 ? 'rgba(255,255,255,0.04)' : '#22C55E',
+                      border: 'none', cursor: selectedEmpIds.length === 0 ? 'not-allowed' : 'pointer',
+                      transition: 'background 0.2s',
+                      opacity: selectedEmpIds.length === 0 || bulkStatus === 'marking' ? 0.6 : 1
+                    }}
+                  >
+                    {bulkStatus === 'marking'
+                      ? 'Marking Present...'
+                      : `Mark Present (${selectedEmpIds.length})`}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
         </div>
 
         {/* Footer */}

@@ -582,6 +582,13 @@ const updateAttendance = async (req, res) => {
       }
     }
 
+    if (updateData.checkInTime !== undefined && updateData.checkInTime !== null) {
+      const currentStatus = updateData.status || (existing ? existing.status : 'Absent')
+      if (currentStatus === 'Absent') {
+        updateData.status = 'Present'
+      }
+    }
+
     const finalCheckIn = updateData.checkInTime !== undefined ? updateData.checkInTime : (existing ? existing.checkInTime : null)
     const finalCheckOut = updateData.checkOutTime !== undefined ? updateData.checkOutTime : (existing ? existing.checkOutTime : null)
 
@@ -679,11 +686,153 @@ const deleteAttendance = async (req, res) => {
   }
 }
 
+const checkScannerAccess = async (user) => {
+  if (user.role === 'admin' || user.role === 'manager') return true
+  if (user.empId) {
+    const employee = await prisma.employee.findUnique({ where: { empId: user.empId } })
+    return employee?.isAttendanceLeader === true
+  }
+  return false
+}
+
+const getEligibleEmployeesToday = async (req, res) => {
+  try {
+    if (!await checkScannerAccess(req.user)) {
+      return res.status(403).json({ error: 'Forbidden: Scanner access required' })
+    }
+
+    const now = new Date()
+    const todayStart = getISTDayStart(now)
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+
+    // 1. Get all employees
+    const employees = await prisma.employee.findMany({
+      select: {
+        empId: true,
+        name: true,
+        position: true,
+        department: true
+      }
+    })
+
+    // 2. Get today's approved leaves/wfh/od/permission
+    const leavesToday = await prisma.leaveRequest.findMany({
+      where: {
+        status: 'Approved',
+        OR: [
+          {
+            fromDate: { lt: todayEnd },
+            toDate: { gte: todayStart }
+          },
+          {
+            date: { gte: todayStart, lt: todayEnd }
+          }
+        ]
+      }
+    })
+    const leaveEmpIds = new Set(leavesToday.map(l => l.empId))
+
+    // 3. Get checked in employees today
+    const attendanceToday = await prisma.attendance.findMany({
+      where: {
+        checkInTime: { gte: todayStart, lt: todayEnd }
+      }
+    })
+    const checkedInEmpIds = new Set(attendanceToday.map(a => a.empId))
+
+    // Filter employees:
+    // - Not on approved leave
+    // - Not checked in already
+    const eligible = employees.filter(e => !leaveEmpIds.has(e.empId) && !checkedInEmpIds.has(e.empId))
+
+    res.json(eligible)
+  } catch (error) {
+    console.error('getEligibleEmployeesToday error:', error)
+    res.status(500).json({ error: 'Failed to fetch eligible employees' })
+  }
+}
+
+const markAllPresentToday = async (req, res) => {
+  try {
+    if (!await checkScannerAccess(req.user)) {
+      return res.status(403).json({ error: 'Forbidden: Scanner access required' })
+    }
+
+    const { empIds } = req.body
+    if (!Array.isArray(empIds) || empIds.length === 0) {
+      return res.status(400).json({ error: 'empIds array is required' })
+    }
+
+    const now = new Date()
+    const todayStart = getISTDayStart(now)
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+
+    let count = 0
+    for (const empId of empIds) {
+      const existing = await prisma.attendance.findFirst({
+        where: {
+          empId,
+          checkInTime: { gte: todayStart, lt: todayEnd }
+        }
+      })
+
+      if (!existing) {
+        const absentRecord = await prisma.attendance.findFirst({
+          where: {
+            empId,
+            timestamp: { gte: todayStart, lt: todayEnd }
+          }
+        })
+
+        if (absentRecord) {
+          await prisma.attendance.update({
+            where: { id: absentRecord.id },
+            data: {
+              status: 'Present',
+              checkInTime: now,
+              checkOutTime: null,
+              hoursWorked: null,
+              overtimeMinutes: null
+            }
+          })
+        } else {
+          await prisma.attendance.create({
+            data: {
+              empId,
+              status: 'Present',
+              checkInTime: now,
+              timestamp: todayStart
+            }
+          })
+        }
+
+        const employee = await prisma.employee.findUnique({ where: { empId } })
+        await logActivity({
+          empId,
+          employeeName: employee?.name || 'Employee',
+          action: 'Mark Present (Bulk)',
+          category: 'ATTENDANCE',
+          details: 'Marked present via scanner terminal bulk option'
+        })
+
+        count++
+      }
+    }
+
+    res.json({ message: `Successfully marked ${count} employees as present`, count })
+  } catch (error) {
+    console.error('markAllPresentToday error:', error)
+    res.status(500).json({ error: 'Failed to mark employees present' })
+  }
+}
+
 module.exports = {
   markAttendance,
   getTodayAttendance,
   getAllAttendance,
   getAttendanceByEmployee,
   updateAttendance,
-  deleteAttendance
+  deleteAttendance,
+  getEligibleEmployeesToday,
+  markAllPresentToday
 }
