@@ -159,16 +159,19 @@ const markAttendance = async (req, res) => {
       return res.status(400).json({ error: 'Employee is on approved leave today' })
     }
 
-    // Find existing record for today — use checkInTime range
+    // Find existing record for today — check both checkInTime and timestamp
     const existing = await prisma.attendance.findFirst({
       where: {
         empId,
-        checkInTime: { gte: todayStart, lt: todayEnd }
+        OR: [
+          { checkInTime: { gte: todayStart, lt: todayEnd } },
+          { timestamp: { gte: todayStart, lt: todayEnd } }
+        ]
       }
     })
 
     // ── CHECK-OUT ────────────────────────────────────────────────────────────
-    if (existing) {
+    if (existing && existing.checkInTime) {
       if (existing.checkOutTime && !isAutoCheckoutTime(existing.checkOutTime)) {
         return res.status(400).json({
           error: 'Already checked in AND out today',
@@ -230,13 +233,25 @@ const markAttendance = async (req, res) => {
     const isLate = totalMinutes >= lateHour * 60 + lateMin
     const status = isLate ? 'Late' : 'Present'
 
-    const attendance = await prisma.attendance.create({
-      data: {
-        empId,
-        status,
-        checkInTime: now, // pure UTC
-      }
-    })
+    let attendance;
+    if (existing) {
+      attendance = await prisma.attendance.update({
+        where: { id: existing.id },
+        data: {
+          status,
+          checkInTime: now
+        }
+      })
+    } else {
+      attendance = await prisma.attendance.create({
+        data: {
+          empId,
+          status,
+          checkInTime: now,
+          timestamp: todayStart
+        }
+      })
+    }
 
     await logActivity({
       empId:        employee.empId,
@@ -292,7 +307,12 @@ const resolveAttendanceForDate = async (date) => {
   const leavesOnDate = leaves.filter(l => isLeaveCoveringDate(l, date))
 
   const records = await prisma.attendance.findMany({
-    where: { checkInTime: { gte: start, lt: end } },
+    where: {
+      OR: [
+        { checkInTime: { gte: start, lt: end } },
+        { timestamp: { gte: start, lt: end } }
+      ]
+    },
     include: { employee: true }
   })
 

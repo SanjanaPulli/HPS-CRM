@@ -69,7 +69,6 @@ const performAbsentCheck = async (now) => {
         where: {
           empId: employee.empId,
           status: 'Approved',
-          type: 'Leave',
           OR: [
             {
               fromDate: { lt: todayEnd },
@@ -85,18 +84,18 @@ const performAbsentCheck = async (now) => {
         }
       })
 
-      // Mark as absent or on leave
+      // Mark as absent or actual leave type
       await prisma.attendance.create({
         data: {
           empId: employee.empId,
-          status: onLeave ? 'On Leave' : 'Absent',
+          status: onLeave ? (onLeave.type || 'On Leave') : 'Absent',
           checkInTime: null,
           checkOutTime: null,
           timestamp: todayStart
         }
       })
 
-      console.log(`Marked ${employee.empId} as ${onLeave ? 'On Leave' : 'Absent'}`)
+      console.log(`Marked ${employee.empId} as ${onLeave ? (onLeave.type || 'On Leave') : 'Absent'}`)
     }
   }
 }
@@ -168,7 +167,6 @@ const backfillAbsentRecords = async () => {
             where: {
               empId: employee.empId,
               status: 'Approved',
-              type: 'Leave',
               OR: [
                 {
                   fromDate: { lt: dayEnd },
@@ -184,7 +182,7 @@ const backfillAbsentRecords = async () => {
           await prisma.attendance.create({
             data: {
               empId: employee.empId,
-              status: onLeave ? 'On Leave' : 'Absent',
+              status: onLeave ? (onLeave.type || 'On Leave') : 'Absent',
               checkInTime: null,
               checkOutTime: null,
               timestamp: dayStart
