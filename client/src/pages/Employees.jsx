@@ -182,6 +182,13 @@ function Employees() {
     e.preventDefault(); setError(null)
     const finalDept = form.department === 'Other' ? (customDept.trim() || '') : form.department
     if (form.department === 'Other' && !customDept.trim()) { setError('Please specify the department name'); return }
+    
+    const isIntern = form.position?.toLowerCase().includes('intern')
+    if (isIntern && !form.endDate) {
+      setError('End Date is required for interns')
+      return
+    }
+    
     const payload = { ...form, department: finalDept }
     try {
       if (editEmployee) {

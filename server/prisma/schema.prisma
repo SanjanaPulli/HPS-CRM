@@ -16,6 +16,7 @@ model Employee {
   email              String?
   contact            String?
   joiningDate        String?
+  endDate            DateTime?
   salary             String?         @default("Not Disclosed")
   teamLead           String?
   dailyWorkStatus    String?
@@ -44,6 +45,8 @@ model Attendance {
   overtimeMinutes  Int?      // can be negative (left early)
 
   employee         Employee  @relation(fields: [empId], references: [empId])
+
+  @@index([empId])
 }
 
 model LeaveRequest {
@@ -61,6 +64,9 @@ model LeaveRequest {
   type           String    @default("Leave")
   createdAt      DateTime  @default(now())
   employee       Employee  @relation(fields: [empId], references: [empId], onDelete: Cascade)
+
+  @@index([empId])
+  @@index([status])
 }
 
 model Announcement {
@@ -122,6 +128,8 @@ model Notification {
   target    String
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([target])
 }
 
 model Holiday {
@@ -150,6 +158,8 @@ model Asset {
   assignedAt   DateTime  @default(now())
   returnedAt   DateTime?
   employee     Employee  @relation(fields: [empId], references: [empId], onDelete: Cascade)
+
+  @@index([empId])
 }
 
 model Document {
@@ -160,4 +170,6 @@ model Document {
   docType    String
   uploadedAt DateTime @default(now())
   employee   Employee @relation(fields: [empId], references: [empId], onDelete: Cascade)
+
+  @@index([empId])
 }

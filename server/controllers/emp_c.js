@@ -34,8 +34,14 @@ const createEmployee = async (req, res) => {
       contact, joiningDate, salary,
       teamLead, dailyWorkStatus,
       photo, password, shiftId,
-      leaveBalanceCL, leaveBalanceSL
+      leaveBalanceCL, leaveBalanceSL,
+      endDate
     } = req.body
+
+    const isIntern = position && position.toLowerCase().includes('intern')
+    if (isIntern && !endDate) {
+      return res.status(400).json({ error: 'End Date is required for interns' })
+    }
 
     const barcodeId = generateBarcodeId(empId)
     const employee = await prisma.employee.create({
@@ -47,7 +53,8 @@ const createEmployee = async (req, res) => {
         password: password || 'hps@1234',
         shiftId: shiftId ? parseInt(shiftId) : null,
         leaveBalanceCL: leaveBalanceCL !== undefined ? parseFloat(leaveBalanceCL) : 12.0,
-        leaveBalanceSL: leaveBalanceSL !== undefined ? parseFloat(leaveBalanceSL) : 10.0
+        leaveBalanceSL: leaveBalanceSL !== undefined ? parseFloat(leaveBalanceSL) : 10.0,
+        endDate: isIntern && endDate ? new Date(endDate) : null
       }
     })
     await logActivity({
@@ -70,8 +77,17 @@ const updateEmployee = async (req, res) => {
       name, position, department, email,
       contact, joiningDate, salary,
       teamLead, dailyWorkStatus, photo,
-      shiftId, leaveBalanceCL, leaveBalanceSL
+      shiftId, leaveBalanceCL, leaveBalanceSL,
+      endDate
     } = req.body
+
+    const isIntern = position && position.toLowerCase().includes('intern')
+    if (isIntern && !endDate) {
+      return res.status(400).json({ error: 'End Date is required for interns' })
+    }
+
+    const oldEmployee = await prisma.employee.findUnique({ where: { empId: req.params.empId } })
+    if (!oldEmployee) return res.status(404).json({ error: 'Employee not found' })
 
     const employee = await prisma.employee.update({
       where: { empId: req.params.empId },
@@ -81,9 +97,11 @@ const updateEmployee = async (req, res) => {
         teamLead, dailyWorkStatus, photo,
         shiftId: shiftId !== undefined ? (shiftId ? parseInt(shiftId) : null) : undefined,
         leaveBalanceCL: leaveBalanceCL !== undefined ? parseFloat(leaveBalanceCL) : undefined,
-        leaveBalanceSL: leaveBalanceSL !== undefined ? parseFloat(leaveBalanceSL) : undefined
+        leaveBalanceSL: leaveBalanceSL !== undefined ? parseFloat(leaveBalanceSL) : undefined,
+        endDate: isIntern && endDate ? new Date(endDate) : null
       }
     })
+
     await logActivity({
       empId: employee.empId,
       employeeName: employee.name,
@@ -93,6 +111,7 @@ const updateEmployee = async (req, res) => {
     })
     res.json(employee)
   } catch (error) {
+    console.error('Update employee error:', error)
     res.status(500).json({ error: 'Failed to update employee' })
   }
 }
@@ -142,15 +161,13 @@ const loginEmployee = async (req, res) => {
     if (employee.password !== password)
       return res.status(401).json({ error: 'Invalid credentials' })
 
-    console.time('activityLog')
-    await logActivity({
+    logActivity({
       empId: employee.empId,
       employeeName: employee.name,
       action: 'Employee Login',
       category: 'AUTH',
       details: 'Logged into CRM'
     })
-    console.timeEnd('activityLog')
 
     const { password: _, ...employeeData } = employee
 

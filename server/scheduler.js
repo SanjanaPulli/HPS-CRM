@@ -14,6 +14,12 @@ const getISTDayStart = (utcDate) => {
   return new Date(istMidnight.getTime() - (5.5 * 60 * 60 * 1000))
 }
 
+const toISTDateString = (utcDate) => {
+  const istMs = utcDate.getTime() + (5.5 * 60 * 60 * 1000)
+  const istDate = new Date(istMs)
+  return `${istDate.getUTCFullYear()}-${String(istDate.getUTCMonth() + 1).padStart(2, '0')}-${String(istDate.getUTCDate()).padStart(2, '0')}`
+}
+
 const performAbsentCheck = async (now) => {
   const todayStart = getISTDayStart(now)
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
@@ -50,8 +56,17 @@ const performAbsentCheck = async (now) => {
 
   // 3. Process all employees
   const employees = await prisma.employee.findMany()
+  const todayStr = toISTDateString(now)
 
   for (const employee of employees) {
+    if (employee.position && employee.position.toLowerCase().includes('intern')) {
+      if (employee.endDate) {
+        const empEndStr = toISTDateString(new Date(employee.endDate))
+        if (todayStr > empEndStr) {
+          continue
+        }
+      }
+    }
     // Check if employee already has attendance record for today (either check-in or timestamp)
     const existing = await prisma.attendance.findFirst({
       where: {
@@ -146,9 +161,19 @@ const backfillAbsentRecords = async () => {
       }
 
       const employees = await prisma.employee.findMany()
+      const dayStartStr = toISTDateString(dayStart)
       for (const employee of employees) {
         if (new Date(employee.createdAt) > dayEnd) {
           continue
+        }
+
+        if (employee.position && employee.position.toLowerCase().includes('intern')) {
+          if (employee.endDate) {
+            const empEndStr = toISTDateString(new Date(employee.endDate))
+            if (dayStartStr > empEndStr) {
+              continue
+            }
+          }
         }
 
         const existing = await prisma.attendance.findFirst({

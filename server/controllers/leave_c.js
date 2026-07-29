@@ -1,6 +1,44 @@
 const prisma = require('../prismaClient')
 const logActivity = require('../utils/activityLogger')
 
+// Helper function to check if two leave requests conflict
+const isConflict = (req1, req2) => {
+  const start1 = new Date(req1.fromDate || req1.date).getTime()
+  const end1 = new Date(req1.toDate || req1.fromDate || req1.date).getTime()
+  const start2 = new Date(req2.fromDate || req2.date).getTime()
+  const end2 = new Date(req2.toDate || req2.fromDate || req2.date).getTime()
+
+  const overlapStart = Math.max(start1, start2)
+  const overlapEnd = Math.min(end1, end2)
+
+  if (overlapStart > overlapEnd) {
+    return false // No date overlap
+  }
+
+  // Both are hourly permissions
+  if (req1.type === 'Permission' && req2.type === 'Permission') {
+    if (req1.fromTime && req1.toTime && req2.fromTime && req2.toTime) {
+      const maxStart = req1.fromTime > req2.fromTime ? req1.fromTime : req2.fromTime
+      const minEnd = req1.toTime < req2.toTime ? req1.toTime : req2.toTime
+      return maxStart < minEnd
+    }
+    return true
+  }
+
+  // One is a Permission and the other is a full/half day leave
+  if (req1.type === 'Permission' || req2.type === 'Permission') {
+    return true
+  }
+
+  // Both are half day leaves
+  if (req1.isHalfDay && req2.isHalfDay) {
+    return req1.halfDaySession === req2.halfDaySession
+  }
+
+  // At least one is a full day/On Duty request
+  return true
+}
+
 // POST - submit leave request (employee)
 const submitLeave = async (req, res) => {
   try {
@@ -24,18 +62,49 @@ const submitLeave = async (req, res) => {
     if (requestedDate < today)
       return res.status(400).json({ error: 'Cannot apply for a past date' })
 
+    const newReq = {
+      date: new Date(primaryDate),
+      fromDate: new Date(primaryDate),
+      toDate: new Date(endDate),
+      isHalfDay: Boolean(isHalfDay),
+      halfDaySession: isHalfDay ? halfDaySession : null,
+      type,
+      fromTime,
+      toTime
+    }
+
+    // Check for approved leaves overlapping with this date range
+    const approvedLeaves = await prisma.leaveRequest.findMany({
+      where: {
+        empId,
+        status: 'Approved',
+        fromDate: { lte: newReq.toDate },
+        toDate: { gte: newReq.fromDate }
+      }
+    })
+
+    for (const existing of approvedLeaves) {
+      if (isConflict(existing, newReq)) {
+        return res.status(400).json({
+          error: `This overlaps with your approved ${existing.type} request on this date.`
+        })
+      }
+    }
+
     const leave = await prisma.leaveRequest.create({
       data: {
         empId,
-        date:           new Date(primaryDate),
-        fromDate:       new Date(primaryDate),
-        toDate:         new Date(endDate),
-        isHalfDay:      Boolean(isHalfDay),
-        halfDaySession: isHalfDay ? halfDaySession : null,
+        date:           newReq.date,
+        fromDate:       newReq.fromDate,
+        toDate:         newReq.toDate,
+        isHalfDay:      newReq.isHalfDay,
+        halfDaySession: newReq.halfDaySession,
+        fromTime:       (type === 'Permission' || type === 'On Duty') ? fromTime : null,
+        toTime:         (type === 'Permission' || type === 'On Duty') ? toTime : null,
         reason,
         type
       }
-   })
+    })
 
     let dayLabel
     if (type === 'Permission') {

@@ -300,23 +300,48 @@ const resolveAttendanceForDate = async (date) => {
   const start = new Date(date + 'T00:00:00+05:30')
   const end   = new Date(date + 'T23:59:59.999+05:30')
 
-  const employees = await prisma.employee.findMany()
-  const leaves = await prisma.leaveRequest.findMany({
-    where: { status: 'Approved' }
+  const [allEmployees, leaves, records, settings] = await Promise.all([
+    prisma.employee.findMany(),
+    prisma.leaveRequest.findMany({
+      where: { status: 'Approved' }
+    }),
+    prisma.attendance.findMany({
+      where: {
+        OR: [
+          { checkInTime: { gte: start, lt: end } },
+          { timestamp: { gte: start, lt: end } }
+        ]
+      },
+      include: { employee: true }
+    }),
+    prisma.officeSetting.findFirst()
+  ])
+
+  const employees = allEmployees.filter(emp => {
+    if (emp.position && emp.position.toLowerCase().includes('intern')) {
+      if (emp.endDate) {
+        const empEndStr = toISTDateString(new Date(emp.endDate))
+        if (date > empEndStr) {
+          return false
+        }
+      }
+    }
+    return true
   })
+
   const leavesOnDate = leaves.filter(l => isLeaveCoveringDate(l, date))
 
-  const records = await prisma.attendance.findMany({
-    where: {
-      OR: [
-        { checkInTime: { gte: start, lt: end } },
-        { timestamp: { gte: start, lt: end } }
-      ]
-    },
-    include: { employee: true }
-  })
+  const lateAfter    = settings?.lateAfter    || '10:15'
+  const checkOutTime = settings?.checkOutTime || '17:30'
+  const checkInTime  = settings?.checkInTime  || '09:30'
 
-  const { standardHours } = await getOfficeSettings()
+  const [lh, lm] = lateAfter.split(':').map(Number)
+  const [oh, om] = checkOutTime.split(':').map(Number)
+  const [ih, im] = checkInTime.split(':').map(Number)
+
+  const shiftStartMins = ih * 60 + im
+  const shiftEndMins   = oh * 60 + om
+  const standardHours  = (shiftEndMins - shiftStartMins) / 60
 
   return employees.map(emp => {
     const record = records.find(r => r.empId === emp.empId)
@@ -385,19 +410,31 @@ const getAllAttendance = async (req, res) => {
       return res.json(resolved)
     }
 
-    const allRecords = await prisma.attendance.findMany({
-      include: { employee: true },
-      orderBy: [
-        { timestamp: 'desc' },
-        { checkInTime: 'desc' }
-      ]
-    })
+    const [allRecords, leaves, settings] = await Promise.all([
+      prisma.attendance.findMany({
+        include: { employee: true },
+        orderBy: [
+          { timestamp: 'desc' },
+          { checkInTime: 'desc' }
+        ]
+      }),
+      prisma.leaveRequest.findMany({
+        where: { status: 'Approved' }
+      }),
+      prisma.officeSetting.findFirst()
+    ])
 
-    const leaves = await prisma.leaveRequest.findMany({
-      where: { status: 'Approved' }
-    })
+    const lateAfter    = settings?.lateAfter    || '10:15'
+    const checkOutTime = settings?.checkOutTime || '17:30'
+    const checkInTime  = settings?.checkInTime  || '09:30'
 
-    const { standardHours } = await getOfficeSettings()
+    const [lh, lm] = lateAfter.split(':').map(Number)
+    const [oh, om] = checkOutTime.split(':').map(Number)
+    const [ih, im] = checkInTime.split(':').map(Number)
+
+    const shiftStartMins = ih * 60 + im
+    const shiftEndMins   = oh * 60 + om
+    const standardHours  = (shiftEndMins - shiftStartMins) / 60
 
     const resolvedRecords = allRecords.map(record => {
       const recordDate = record.checkInTime || record.timestamp
@@ -451,19 +488,31 @@ const getAllAttendance = async (req, res) => {
 
 const getAttendanceByEmployee = async (req, res) => {
   try {
-    const records = await prisma.attendance.findMany({
-      where:   { empId: req.params.empId },
-      orderBy: [
-        { timestamp: 'desc' },
-        { checkInTime: 'desc' }
-      ]
-    })
+    const [records, leaves, settings] = await Promise.all([
+      prisma.attendance.findMany({
+        where:   { empId: req.params.empId },
+        orderBy: [
+          { timestamp: 'desc' },
+          { checkInTime: 'desc' }
+        ]
+      }),
+      prisma.leaveRequest.findMany({
+        where: { empId: req.params.empId, status: 'Approved' }
+      }),
+      prisma.officeSetting.findFirst()
+    ])
 
-    const leaves = await prisma.leaveRequest.findMany({
-      where: { empId: req.params.empId, status: 'Approved' }
-    })
+    const lateAfter    = settings?.lateAfter    || '10:15'
+    const checkOutTime = settings?.checkOutTime || '17:30'
+    const checkInTime  = settings?.checkInTime  || '09:30'
 
-    const { standardHours } = await getOfficeSettings()
+    const [lh, lm] = lateAfter.split(':').map(Number)
+    const [oh, om] = checkOutTime.split(':').map(Number)
+    const [ih, im] = checkInTime.split(':').map(Number)
+
+    const shiftStartMins = ih * 60 + im
+    const shiftEndMins   = oh * 60 + om
+    const standardHours  = (shiftEndMins - shiftStartMins) / 60
 
     const resolved = records.map(record => {
       const recordDate = record.checkInTime || record.timestamp
@@ -731,39 +780,54 @@ const getEligibleEmployeesToday = async (req, res) => {
     const todayStart = getISTDayStart(now)
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
 
-    // 1. Get all employees
-    const employees = await prisma.employee.findMany({
-      select: {
-        empId: true,
-        name: true,
-        position: true,
-        department: true
-      }
-    })
+    // Fetch in parallel
+    const [allEmployees, leavesToday, attendanceToday] = await Promise.all([
+      prisma.employee.findMany({
+        select: {
+          empId: true,
+          name: true,
+          position: true,
+          department: true,
+          endDate: true
+        }
+      }),
+      prisma.leaveRequest.findMany({
+        where: {
+          status: 'Approved',
+          OR: [
+            {
+              fromDate: { lt: todayEnd },
+              toDate: { gte: todayStart }
+            },
+            {
+              date: { gte: todayStart, lt: todayEnd }
+            }
+          ]
+        }
+      }),
+      prisma.attendance.findMany({
+        where: {
+          checkInTime: { gte: todayStart, lt: todayEnd }
+        }
+      })
+    ])
 
-    // 2. Get today's approved leaves/wfh/od/permission
-    const leavesToday = await prisma.leaveRequest.findMany({
-      where: {
-        status: 'Approved',
-        OR: [
-          {
-            fromDate: { lt: todayEnd },
-            toDate: { gte: todayStart }
-          },
-          {
-            date: { gte: todayStart, lt: todayEnd }
+    const todayStr = toISTDateString(now)
+
+    // Filter out completed interns
+    const employees = allEmployees.filter(emp => {
+      if (emp.position && emp.position.toLowerCase().includes('intern')) {
+        if (emp.endDate) {
+          const empEndStr = toISTDateString(new Date(emp.endDate))
+          if (todayStr > empEndStr) {
+            return false // internship completed before today
           }
-        ]
+        }
       }
+      return true
     })
-    const leaveEmpIds = new Set(leavesToday.map(l => l.empId))
 
-    // 3. Get checked in employees today
-    const attendanceToday = await prisma.attendance.findMany({
-      where: {
-        checkInTime: { gte: todayStart, lt: todayEnd }
-      }
-    })
+    const leaveEmpIds = new Set(leavesToday.map(l => l.empId))
     const checkedInEmpIds = new Set(attendanceToday.map(a => a.empId))
 
     // Filter employees:

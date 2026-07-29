@@ -248,6 +248,79 @@ function EmployeeLeave() {
     isHalfDay: false, halfDaySession: 'Morning',
     fromTime: '', toTime: '',
   })
+  const [dateOverlapError, setDateOverlapError] = useState('')
+
+  useEffect(() => {
+    if (!form.fromDate || !myLeaves.length) {
+      setDateOverlapError('')
+      return
+    }
+
+    const proposedFromDateStr = form.fromDate
+    const proposedToDateStr = requestType === 'Permission' ? form.fromDate : (form.toDate || form.fromDate)
+
+    const proposedStart = new Date(proposedFromDateStr + 'T00:00:00').getTime()
+    const proposedEnd = new Date(proposedToDateStr + 'T00:00:00').getTime()
+
+    if (proposedEnd < proposedStart) {
+      setDateOverlapError('')
+      return
+    }
+
+    const approved = myLeaves.filter(l => l.status === 'Approved')
+    
+    let conflict = null
+    for (const existing of approved) {
+      const existingFrom = existing.fromDate || existing.date
+      const existingTo = existing.toDate || existing.fromDate || existing.date
+      if (!existingFrom) continue
+
+      const start1 = new Date(existingFrom.split('T')[0] + 'T00:00:00').getTime()
+      const end1 = new Date(existingTo.split('T')[0] + 'T00:00:00').getTime()
+
+      const overlapStart = Math.max(start1, proposedStart)
+      const overlapEnd = Math.min(end1, proposedEnd)
+
+      if (overlapStart <= overlapEnd) {
+        // Date ranges overlap, now check finer details
+        let hasConflict = true
+
+        // Check hourly permissions
+        if (existing.type === 'Permission' && requestType === 'Permission') {
+          if (existing.fromTime && existing.toTime && form.fromTime && form.toTime) {
+            const maxStart = existing.fromTime > form.fromTime ? existing.fromTime : form.fromTime
+            const minEnd = existing.toTime < form.toTime ? existing.toTime : form.toTime
+            hasConflict = maxStart < minEnd
+          }
+        } 
+        // Check half day leaves
+        else if (existing.isHalfDay && form.isHalfDay) {
+          hasConflict = existing.halfDaySession === form.halfDaySession
+        }
+
+        if (hasConflict) {
+          conflict = existing
+          break
+        }
+      }
+    }
+
+    if (conflict) {
+      const typeLabel = conflict.type || 'Leave'
+      const dateLabel = conflict.toDate && conflict.toDate !== conflict.fromDate
+        ? `${new Date(conflict.fromDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} to ${new Date(conflict.toDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`
+        : new Date(conflict.fromDate || conflict.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+      
+      const errorMsg = `This range overlaps with your approved ${typeLabel} request on ${dateLabel}.`
+      
+      setForm(p => ({ ...p, fromDate: '', toDate: '' }))
+      setDateOverlapError('')
+      
+      alert(`Invalid Date Selection:\n\n${errorMsg}\n\nYou cannot select or apply for these dates.`)
+    } else {
+      setDateOverlapError('')
+    }
+  }, [form.fromDate, form.toDate, form.fromTime, form.toTime, form.isHalfDay, form.halfDaySession, requestType, myLeaves])
 
   useEffect(() => {
     let emp = null
@@ -325,6 +398,10 @@ function EmployeeLeave() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(''); setSuccess('')
+
+    if (dateOverlapError) {
+      return setError(dateOverlapError)
+    }
 
     if (requestType === 'Permission') {
       if (!form.fromDate)  return setError('Please select a date')
@@ -724,16 +801,24 @@ function EmployeeLeave() {
                 />
               </div>
 
+              {dateOverlapError && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, fontSize: 13, background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span><strong>Overlap Error:</strong> {dateOverlapError}</span>
+                </div>
+              )}
+
               <div>
-                <button type="submit" disabled={submitting}
+                <button type="submit" disabled={submitting || !!dateOverlapError}
                   style={{
-                    padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#fff',
-                    border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
-                    background: submitting ? 'rgba(26,171,219,0.5)' : '#1AABDB',
-                    boxShadow: submitting ? 'none' : '0 4px 16px rgba(26,171,219,0.25)',
+                    padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+                    color: (submitting || dateOverlapError) ? 'var(--text-secondary)' : '#fff',
+                    border: 'none', cursor: (submitting || dateOverlapError) ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
+                    background: (submitting || dateOverlapError) ? 'rgba(100,116,139,0.1)' : '#1AABDB',
+                    boxShadow: (submitting || dateOverlapError) ? 'none' : '0 4px 16px rgba(26,171,219,0.25)',
                   }}
-                  onMouseEnter={e => { if (!submitting) e.currentTarget.style.background = '#0e8ab5' }}
-                  onMouseLeave={e => { if (!submitting) e.currentTarget.style.background = '#1AABDB' }}>
+                  onMouseEnter={e => { if (!submitting && !dateOverlapError) e.currentTarget.style.background = '#0e8ab5' }}
+                  onMouseLeave={e => { if (!submitting && !dateOverlapError) e.currentTarget.style.background = '#1AABDB' }}>
                   {submitting ? 'Submitting…' : `Submit ${requestType} Request`}
                 </button>
               </div>
