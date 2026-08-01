@@ -311,6 +311,51 @@ const resetPassword = async (req, res) => {
   }
 }
 
+const getMyTeam = async (req, res) => {
+  try {
+    const currentEmployee = await prisma.employee.findUnique({
+      where: { empId: req.user.empId }
+    })
+    if (!currentEmployee) {
+      return res.status(404).json({ error: 'Employee not found' })
+    }
+    if (!currentEmployee.isAttendanceLeader) {
+      return res.status(403).json({ error: 'Access denied: You are not a team lead' })
+    }
+    
+    // Get IST day start/end for today's attendance
+    const now = new Date()
+    const istMs = now.getTime() + (5.5 * 60 * 60 * 1000)
+    const istDate = new Date(istMs)
+    const istMidnight = new Date(Date.UTC(
+      istDate.getUTCFullYear(),
+      istDate.getUTCMonth(),
+      istDate.getUTCDate(),
+      0, 0, 0, 0
+    ))
+    const todayStart = new Date(istMidnight.getTime() - (5.5 * 60 * 60 * 1000))
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+
+    const teamMembers = await prisma.employee.findMany({
+      where: { teamLead: currentEmployee.name },
+      include: {
+        attendance: {
+          where: {
+            timestamp: {
+              gte: todayStart,
+              lt: todayEnd
+            }
+          }
+        }
+      }
+    })
+    res.json(teamMembers)
+  } catch (error) {
+    console.error('Get my team error:', error)
+    res.status(500).json({ error: 'Failed to fetch team members' })
+  }
+}
+
 module.exports = {
   getAllEmployees,
   getEmployeeById,
@@ -322,4 +367,5 @@ module.exports = {
   toggleAttendanceLeader,
   changePassword,
   resetPassword,
+  getMyTeam,
 }

@@ -703,6 +703,212 @@ function SecurityTab() {
   )
 }
 
+// ─── TAB: Admins Management ───────────────────────────────────────────────────
+function AdminsTab() {
+  const [admins, setAdmins] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
+  const [status, setStatus] = useState(null)
+  
+  const [form, setForm] = useState({ name: '', username: '', password: '', role: 'admin' })
+  const [showPass, setShowPass] = useState(false)
+
+  const currentUsername = (() => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      if (!token) return null
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      return payload.username
+    } catch { return null }
+  })()
+
+  useEffect(() => {
+    fetchAdmins()
+  }, [])
+
+  const fetchAdmins = async () => {
+    setFetching(true)
+    try {
+      const token = localStorage.getItem('adminToken')
+      const res = await fetch(`${BASE_URL}/api/admin`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (res.ok) setAdmins(data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+    setStatus(null)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.name.trim() || !form.username.trim() || !form.password) {
+      return setStatus({ type: 'error', msg: 'All fields are required.' })
+    }
+    setLoading(true)
+    setStatus(null)
+    try {
+      const token = localStorage.getItem('adminToken')
+      const res = await fetch(`${BASE_URL}/api/admin/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify(form)
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setStatus({ type: 'error', msg: data.error || data.message || 'Failed to create admin.' })
+      } else {
+        setStatus({ type: 'success', msg: 'Admin account created successfully!' })
+        setForm({ name: '', username: '', password: '', role: 'admin' })
+        fetchAdmins()
+      }
+    } catch {
+      setStatus({ type: 'error', msg: 'Failed to connect to server.' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (id, name, username) => {
+    if (username === currentUsername) return
+    if (username === 'satheesh') return
+    if (!window.confirm(`Are you sure you want to delete ${name}'s admin account?`)) return
+    
+    try {
+      const token = localStorage.getItem('adminToken')
+      const res = await fetch(`${BASE_URL}/api/admin/${id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setStatus({ type: 'success', msg: 'Admin account deleted successfully.' })
+        fetchAdmins()
+      } else {
+        setStatus({ type: 'error', msg: data.error || 'Failed to delete account.' })
+      }
+    } catch {
+      setStatus({ type: 'error', msg: 'Failed to delete account.' })
+    }
+  }
+
+  if (fetching) return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading accounts...</div>
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      
+      {/* Create New Admin Form */}
+      <form onSubmit={handleSubmit}>
+        <CardSection
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>}
+          title="Create Admin Account"
+          subtitle="Register a new administrator or manager to access the admin portal"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <Field label="Full Name">
+              <TextInput name="name" value={form.name} onChange={handleChange} placeholder="" />
+            </Field>
+            
+            <Field label="Username">
+              <TextInput name="username" value={form.username} onChange={handleChange} placeholder="" />
+            </Field>
+            <PasswordField 
+              label="Password" 
+              name="password" 
+              value={form.password} 
+              onChange={handleChange} 
+              show={showPass} 
+              onToggle={() => setShowPass(!showPass)} 
+              placeholder="" 
+            />
+
+            <Field label="Role" hint="Managers have limited actions compared to primary administrators">
+              <div style={{ position: 'relative' }}>
+                <select 
+                  name="role" 
+                  value={form.role} 
+                  onChange={handleChange} 
+                  style={{
+                    width: '100%', padding: '0.65rem 0.85rem',
+                    background: 'var(--input-bg)', border: '1px solid var(--input-border)',
+                    borderRadius: '8px', color: 'var(--text-primary)', fontSize: '0.9rem',
+                    outline: 'none', appearance: 'none', cursor: 'pointer'
+                  }}
+                >
+                  <option value="admin">Admin</option>
+                  <option value="manager">Manager</option>
+                </select>
+                <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)', display: 'flex' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </span>
+              </div>
+            </Field>
+          </div>
+          <div style={{ marginTop: '1.25rem' }}>
+            <SaveButton loading={loading} label="Create Account" />
+          </div>
+        </CardSection>
+      </form>
+
+      {/* Existing Admins List */}
+      <CardSection
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1AABDB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+        title="Admin Accounts"
+        subtitle="Manage active administrator and manager credentials"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {admins.map(admin => {
+            const isSelf = admin.username === currentUsername
+            const isSuper = admin.username === 'satheesh'
+            return (
+              <div key={admin.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 16px', borderRadius: '10px', background: 'var(--surface2)',
+                border: '1px solid var(--border)'
+              }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {admin.name} {isSelf && <span style={{ fontSize: '0.75rem', color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>You</span>}
+                  </p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    Username: <span style={{ fontFamily: 'monospace' }}>{admin.username}</span> · Role: <span style={{ textTransform: 'capitalize', color: admin.role === 'admin' ? '#1AABDB' : '#eab308', fontWeight: 600 }}>{admin.role}</span>
+                  </p>
+                </div>
+                {!isSelf && !isSuper && (
+                  <button 
+                    onClick={() => handleDelete(admin.id, admin.name, admin.username)}
+                    style={{
+                      padding: '6px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                      color: '#EF4444', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </CardSection>
+
+      <StatusBanner status={status} />
+    </div>
+  )
+}
+
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 const TABS = [
   {
@@ -721,6 +927,15 @@ const TABS = [
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('office')
+  const userRole = localStorage.getItem('role')
+
+  const tabs = [...TABS]
+  if (userRole === 'admin') {
+    tabs.push({
+      id: 'admins', label: 'Admins',
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    })
+  }
 
   return (
     <div style={{ padding: '2rem', maxWidth: '680px' }}>
@@ -730,7 +945,7 @@ export default function Settings() {
       </div>
 
       <div style={{ display: 'flex', gap: '4px', marginBottom: '1.75rem', background: 'var(--surface2)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
-        {TABS.map(tab => {
+        {tabs.map(tab => {
           const active = activeTab === tab.id
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
@@ -751,6 +966,7 @@ export default function Settings() {
       {activeTab === 'office'    && <OfficeTab />}
       {activeTab === 'holidays'  && <HolidaysTab />}
       {activeTab === 'security'  && <SecurityTab />}
+      {activeTab === 'admins'    && <AdminsTab />}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>

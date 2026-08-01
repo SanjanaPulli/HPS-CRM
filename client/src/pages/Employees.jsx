@@ -5,8 +5,7 @@ import BASE_URL from '../config'
 
 const EMPTY_FORM = {
   empId: '', name: '', position: '', joiningDate: '', endDate: '', email: '',
-  contact: '', salary: 'Not Disclosed', teamLead: '', department: '', photo: '',
-  shiftId: '', leaveBalanceCL: '12.0', leaveBalanceSL: '10.0'
+  contact: '', salary: 'Not Disclosed', teamLead: '', department: '', photo: ''
 }
 
 const DEPARTMENTS = ['Engineering', 'HR', 'Sales', 'Marketing', 'Finance', 'IT', 'Operations', 'Other']
@@ -213,10 +212,7 @@ function Employees() {
       email: emp.email || '', salary: emp.salary || 'Not Disclosed',
       teamLead: emp.teamLead || '', contact: emp.contact || '',
       department: isKnownDept ? (emp.department || '') : (emp.department ? 'Other' : ''),
-      photo: emp.photo || '',
-      shiftId: emp.shiftId || '',
-      leaveBalanceCL: emp.leaveBalanceCL !== undefined ? String(emp.leaveBalanceCL) : '12.0',
-      leaveBalanceSL: emp.leaveBalanceSL !== undefined ? String(emp.leaveBalanceSL) : '10.0'
+      photo: emp.photo || ''
     })
     setCustomDept(isKnownDept ? '' : (emp.department || ''))
     setShowForm(true)
@@ -466,40 +462,6 @@ function Employees() {
                   placeholder="Type department name…" required autoFocus
                   style={{ ...inputStyle, width: '100%', marginTop: 8, border: '1px solid #1AABDB' }} />
               )}
-            </div>
-
-            {/* Office Shift Selection */}
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Office Shift</label>
-              <div style={selectWrap}>
-                <select value={form.shiftId}
-                  onChange={e => setForm({ ...form, shiftId: e.target.value })}
-                  style={{ ...inputStyle, width: '100%', paddingRight: 32, appearance: 'none', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
-                  <option value="">— Flexible (None) —</option>
-                  {shifts.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.startTime} - {s.endTime})</option>
-                  ))}
-                </select>
-                <span style={chevronOverlay}><ChevronDown /></span>
-              </div>
-            </div>
-
-            {/* Casual Leave Balance */}
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Casual Leave (CL) Balance</label>
-              <input type="number" step="0.5" value={form.leaveBalanceCL}
-                onChange={e => setForm({ ...form, leaveBalanceCL: e.target.value })}
-                placeholder="12.0"
-                style={{ ...inputStyle, width: '100%' }} />
-            </div>
-
-            {/* Sick Leave Balance */}
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 500, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Sick Leave (SL) Balance</label>
-              <input type="number" step="0.5" value={form.leaveBalanceSL}
-                onChange={e => setForm({ ...form, leaveBalanceSL: e.target.value })}
-                placeholder="10.0"
-                style={{ ...inputStyle, width: '100%' }} />
             </div>
 
             {/* Submit row */}

@@ -31,6 +31,8 @@ import RequireAuth from './RequireAuth.jsx'
 import RequireLeader from './RequireLeader.jsx'
 import EmployeeCalendar from './pages/EmployeeCalender'
 import AdminCalendar from './pages/AdminCalender'
+import Teams from './pages/Teams'
+import MyTeam from './pages/MyTeam'
 
 function App() {
   return (
@@ -69,6 +71,7 @@ function App() {
           <Route path="activity" element={<Activity />} />
           <Route path="settings" element={<Settings />} />
           <Route path="calendar" element={<AdminCalendar />} />
+          <Route path="teams" element={<Teams />} />
           <Route path="my-leave" element={<EmployeeLeave />} />
           <Route path="my-profile" element={<EmployeeProfile />} />
           <Route path="my-attendance" element={<EmployeeAttendance />} />
@@ -89,6 +92,7 @@ function App() {
           <Route path="profile" element={<EmployeeProfile />} />
           <Route path="attendance" element={<EmployeeAttendance />} />
           <Route path="scan" element={<TeamScan />} />
+          <Route path="team" element={<MyTeam />} />
           <Route path="settings" element={<Settings />} />
           <Route path="calendar" element={<EmployeeCalendar />} />
         </Route>

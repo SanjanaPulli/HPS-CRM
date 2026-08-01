@@ -15,11 +15,13 @@ const {
   toggleAttendanceLeader,
   changePassword,
   resetPassword,
+  getMyTeam,
 } = require('../controllers/emp_c')
 
-const { verifyAdmin, verifySelfOrAdmin } = require('../utils/auth')
+const { verifyAdmin, verifyUser, verifySelfOrAdmin } = require('../utils/auth')
 
 router.get('/', verifyAdmin, getAllEmployees)
+router.get('/my-team', verifyUser, getMyTeam)
 router.get('/:empId', verifySelfOrAdmin, getEmployeeById)
 router.post('/', verifyAdmin, createEmployee)
 router.post('/login', loginEmployee)
